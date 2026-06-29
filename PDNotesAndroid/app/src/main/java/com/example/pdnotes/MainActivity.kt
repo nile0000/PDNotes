@@ -89,53 +89,9 @@ data class Contact(
     val role: String = "",
     val phone: String = "",
     val email: String = "",
-    val street: String = "",
-    val street2: String = "",
-    val city: String = "",
-    val state: String = "",
-    val zip: String = "",
-
+    val address: String = "",
     val notes: String = ""
-) {
-    val formattedAddress: String get() {
-        val cityStateZip = listOfNotNull(
-            city.ifBlank { null },
-            state.ifBlank { null }
-        ).joinToString(", ") + if (zip.isNotBlank()) " $zip" else ""
-        return listOf(street, street2, cityStateZip.trim())
-            .filter { it.isNotBlank() }
-            .joinToString("\n")
-    }
-}
-
-// Parses a single-line address ("123 Main St, City, ST 12345") into components.
-data class ParsedAddress(val street: String = "", val street2: String = "", val city: String = "", val state: String = "", val zip: String = "")
-
-fun parseAddressLine(raw: String): ParsedAddress {
-    val parts = raw.split(",").map { it.trim() }.filter { it.isNotBlank() }
-    if (parts.isEmpty()) return ParsedAddress()
-    // Last segment is expected to be "State ZIP" or just "State"
-    val lastTokens = parts.last().split(Regex("\\s+")).filter { it.isNotBlank() }
-    val looksLikeStateZip = lastTokens.size in 1..2 && lastTokens.first().length <= 3
-    return when {
-        parts.size >= 3 && looksLikeStateZip -> {
-            val streetParts = parts.dropLast(2)
-            ParsedAddress(
-                street = streetParts.getOrElse(0) { "" },
-                street2 = streetParts.drop(1).joinToString(", "),
-                city = parts[parts.size - 2],
-                state = lastTokens.getOrElse(0) { "" },
-                zip = lastTokens.getOrElse(1) { "" }
-            )
-        }
-        parts.size == 2 && looksLikeStateZip -> ParsedAddress(
-            street = parts[0],
-            state = lastTokens.getOrElse(0) { "" },
-            zip = lastTokens.getOrElse(1) { "" }
-        )
-        else -> ParsedAddress(street = parts.first(), street2 = parts.drop(1).joinToString(", "))
-    }
-}
+)
 
 // Returns schedules active on a given dateKey ("yyyy-MM-dd")
 fun schedulesForDate(schedules: List<MedicationSchedule>, dateKey: String): List<MedicationSchedule> =
@@ -329,11 +285,7 @@ fun PDNotesApp() {
                         role = obj.optString("role", ""),
                         phone = obj.optString("phone", ""),
                         email = obj.optString("email", ""),
-                        street = obj.optString("street", obj.optString("address", "")),
-                        street2 = obj.optString("street2", ""),
-                        city = obj.optString("city", ""),
-                        state = obj.optString("state", ""),
-                        zip = obj.optString("zip", ""),
+                        address = obj.optString("address", obj.optString("street", "")),
 
                         notes = obj.optString("notes", "")
                     ))
@@ -352,11 +304,7 @@ fun PDNotesApp() {
             obj.put("role", c.role)
             obj.put("phone", c.phone)
             obj.put("email", c.email)
-            obj.put("street", c.street)
-            obj.put("street2", c.street2)
-            obj.put("city", c.city)
-            obj.put("state", c.state)
-            obj.put("zip", c.zip)
+            obj.put("address", c.address)
 
             obj.put("notes", c.notes)
             array.put(obj)
@@ -1659,7 +1607,7 @@ fun AppointmentForm(
                                     .fillMaxWidth()
                                     .clickable {
                                         selectedContactId = contact.id
-                                        if (contact.formattedAddress.isNotBlank()) location = contact.formattedAddress
+                                        if (contact.address.isNotBlank()) location = contact.address
                                         showContactPicker = false
                                     }
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1700,7 +1648,7 @@ fun AppointmentForm(
                     onSave = { newContact ->
                         onAddContact(newContact)
                         selectedContactId = newContact.id
-                        if (newContact.formattedAddress.isNotBlank()) location = newContact.formattedAddress
+                        if (newContact.address.isNotBlank()) location = newContact.address
                         showAddContact = false
                     },
                     onCancel = { showAddContact = false }
@@ -1878,8 +1826,8 @@ fun ContactsScreen(
                             if (contact.email.isNotBlank()) {
                                 Text("✉ ${contact.email}", fontSize = 13.sp, color = Color.Gray)
                             }
-                            if (contact.formattedAddress.isNotBlank()) {
-                                Text("📍 ${contact.formattedAddress}", fontSize = 13.sp, color = Color.Gray)
+                            if (contact.address.isNotBlank()) {
+                                Text("📍 ${contact.address}", fontSize = 13.sp, color = Color.Gray)
                             }
                             if (contact.notes.isNotBlank()) {
                                 Text(contact.notes, fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
@@ -1909,12 +1857,7 @@ fun ContactForm(
     var role by remember(initial?.id) { mutableStateOf(initial?.role ?: "") }
     var phone by remember(initial?.id) { mutableStateOf(initial?.phone ?: "") }
     var email by remember(initial?.id) { mutableStateOf(initial?.email ?: "") }
-    var street by remember(initial?.id) { mutableStateOf(initial?.street ?: "") }
-    var street2 by remember(initial?.id) { mutableStateOf(initial?.street2 ?: "") }
-    var city by remember(initial?.id) { mutableStateOf(initial?.city ?: "") }
-    var state by remember(initial?.id) { mutableStateOf(initial?.state ?: "") }
-    var zip by remember(initial?.id) { mutableStateOf(initial?.zip ?: "") }
-
+    var address by remember(initial?.id) { mutableStateOf(initial?.address ?: "") }
     var notes by remember(initial?.id) { mutableStateOf(initial?.notes ?: "") }
 
     val contactPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
@@ -1938,39 +1881,13 @@ fun ContactForm(
                 )?.use { ec -> if (ec.moveToFirst()) email = ec.getString(ec.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Email.ADDRESS)) ?: email }
                 resolver.query(
                     ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_URI,
-                    arrayOf(
-                        ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS,
-                        ContactsContract.CommonDataKinds.StructuredPostal.STREET,
-                        ContactsContract.CommonDataKinds.StructuredPostal.CITY,
-                        ContactsContract.CommonDataKinds.StructuredPostal.REGION,
-                        ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE
-                    ),
+                    arrayOf(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS),
                     "${ContactsContract.CommonDataKinds.StructuredPostal.CONTACT_ID} = ?",
                     arrayOf(contactId), null
                 )?.use { ac ->
                     if (ac.moveToFirst()) {
-                        val structuredCity = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.CITY))?.trim() ?: ""
-                        if (structuredCity.isNotBlank()) {
-                            val streetRaw = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.STREET)) ?: ""
-                            val streetLines = streetRaw.split("\n").map { it.trim() }.filter { it.isNotBlank() }
-                            street = streetLines.getOrElse(0) { "" }
-                            street2 = streetLines.getOrElse(1) { "" }
-                            city = structuredCity
-                            state = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.REGION))?.trim() ?: ""
-                            zip = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE))?.trim() ?: ""
-                        } else {
-                            val raw = (ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS))
-                                ?: ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.STREET))
-                                ?: "").trim()
-                            if (raw.isNotBlank()) {
-                                val parsed = parseAddressLine(raw)
-                                street = parsed.street
-                                street2 = parsed.street2
-                                city = parsed.city
-                                state = parsed.state
-                                zip = parsed.zip
-                            }
-                        }
+                        val raw = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS))?.trim() ?: ""
+                        if (raw.isNotBlank()) address = raw
                     }
                 }
             }
@@ -2047,49 +1964,13 @@ fun ContactForm(
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Email
                 )
             )
-            Text("Address", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.Gray)
             OutlinedTextField(
-                value = street,
-                onValueChange = { street = it },
-                label = { Text("Street") },
+                value = address,
+                onValueChange = { address = it },
+                label = { Text("Address (optional)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
-            OutlinedTextField(
-                value = street2,
-                onValueChange = { street2 = it },
-                label = { Text("Street 2 (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = city,
-                    onValueChange = { city = it },
-                    label = { Text("City") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = state,
-                    onValueChange = { state = it },
-                    label = { Text("State") },
-                    modifier = Modifier.width(80.dp),
-                    singleLine = true
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = zip,
-                    onValueChange = { zip = it },
-                    label = { Text("ZIP") },
-                    modifier = Modifier.width(100.dp),
-                    singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
-                    )
-                )
-            }
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
@@ -2108,12 +1989,7 @@ fun ContactForm(
                                 role = role.trim(),
                                 phone = phone.trim(),
                                 email = email.trim(),
-                                street = street.trim(),
-                                street2 = street2.trim(),
-                                city = city.trim(),
-                                state = state.trim(),
-                                zip = zip.trim(),
-
+                                address = address.trim(),
                                 notes = notes.trim()
                             ))
                         }
