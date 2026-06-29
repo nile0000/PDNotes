@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.pdnotes"
+    namespace = "com.weinman.pdnotes"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.pdnotes"
+        applicationId = "com.weinman.pdnotes"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

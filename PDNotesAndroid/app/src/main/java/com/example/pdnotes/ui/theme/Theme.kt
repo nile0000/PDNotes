@@ -1,4 +1,4 @@
-package com.example.pdnotes.ui.theme
+package com.weinman.pdnotes.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

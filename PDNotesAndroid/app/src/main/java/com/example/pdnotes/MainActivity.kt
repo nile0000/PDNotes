@@ -1,7 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
-@file:Suppress("DEPRECATION")
 
-package com.example.pdnotes
+package com.weinman.pdnotes
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -26,14 +25,17 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.example.pdnotes.ui.theme.PDNotesTheme
+import com.weinman.pdnotes.ui.theme.PDNotesTheme
 import org.json.JSONArray
 import org.json.JSONObject
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.util.Log
 import androidx.compose.ui.platform.LocalContext
 import java.text.SimpleDateFormat
 import java.util.*
+
+private const val TAG = "PDNotes"
 
 // MARK: - Data models
 
@@ -116,7 +118,7 @@ fun PDNotesApp() {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
-        EncryptedSharedPreferences.create(
+        EncryptedSharedPreferences(
             context,
             "pd_notes_encrypted",
             masterKey,
@@ -148,7 +150,7 @@ fun PDNotesApp() {
                         endDate = obj.optString("endDate", "").ifBlank { null }
                     ))
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) { Log.e(TAG, "Failed to load medication schedules", e) }
         }
         mutableStateListOf<MedicationSchedule>().apply { addAll(list) }
     }
@@ -163,12 +165,12 @@ fun PDNotesApp() {
                     val obj = json.getJSONObject(key)
                     initialMap[key] = DayStatus(
                         taken = obj.optBoolean("taken"),
-                        rating = DayRating.valueOf(obj.optString("rating", "NORMAL")),
+                        rating = runCatching { DayRating.valueOf(obj.optString("rating", "NORMAL")) }.getOrDefault(DayRating.NORMAL),
                         note = obj.optString("note"),
                         isRead = obj.optBoolean("isRead")
                     )
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) { Log.e(TAG, "Failed to load day statuses", e) }
         }
         mutableStateMapOf<String, DayStatus>().apply { putAll(initialMap) }
     }
@@ -203,7 +205,7 @@ fun PDNotesApp() {
                         diet = obj.optString("diet")
                     )
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) { Log.e(TAG, "Failed to load day symptoms", e) }
         }
         mutableStateMapOf<String, DaySymptoms>().apply { putAll(initialMap) }
     }
@@ -241,7 +243,7 @@ fun PDNotesApp() {
                         contactId = obj.optString("contactId", "").ifBlank { null }
                     ))
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) { Log.e(TAG, "Failed to load appointments", e) }
         }
         mutableStateListOf<Appointment>().apply { addAll(list) }
     }
@@ -280,7 +282,7 @@ fun PDNotesApp() {
                         notes = obj.optString("notes", "")
                     ))
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) { Log.e(TAG, "Failed to load contacts", e) }
         }
         mutableStateListOf<Contact>().apply { addAll(list) }
     }
@@ -1199,7 +1201,7 @@ fun CalendarView(
         SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(cal.time)
     }
 
-    Column {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
