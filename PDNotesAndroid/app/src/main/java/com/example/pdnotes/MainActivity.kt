@@ -28,10 +28,16 @@ import androidx.security.crypto.MasterKey
 import com.weinman.pdnotes.ui.theme.PDNotesTheme
 import org.json.JSONArray
 import org.json.JSONObject
+import android.Manifest
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.pm.PackageManager
+import android.provider.ContactsContract
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -118,7 +124,8 @@ fun PDNotesApp() {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
-        EncryptedSharedPreferences(
+        @Suppress("DEPRECATION")
+        EncryptedSharedPreferences.create(
             context,
             "pd_notes_encrypted",
             masterKey,
@@ -1843,12 +1850,54 @@ fun ContactForm(
     onSave: (Contact) -> Unit,
     onCancel: () -> Unit
 ) {
+    val context = LocalContext.current
     var name by remember(initial?.id) { mutableStateOf(initial?.name ?: "") }
     var role by remember(initial?.id) { mutableStateOf(initial?.role ?: "") }
     var phone by remember(initial?.id) { mutableStateOf(initial?.phone ?: "") }
     var email by remember(initial?.id) { mutableStateOf(initial?.email ?: "") }
     var address by remember(initial?.id) { mutableStateOf(initial?.address ?: "") }
     var notes by remember(initial?.id) { mutableStateOf(initial?.notes ?: "") }
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        val resolver = context.contentResolver
+        resolver.query(uri, arrayOf(ContactsContract.Contacts.DISPLAY_NAME, ContactsContract.Contacts._ID), null, null, null)?.use { c ->
+            if (c.moveToFirst()) {
+                name = c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME)) ?: name
+                val contactId = c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts._ID))
+                resolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                    "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                    arrayOf(contactId), null
+                )?.use { pc -> if (pc.moveToFirst()) phone = pc.getString(pc.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)) ?: phone }
+                resolver.query(
+                    ContactsContract.CommonDataKinds.Email.CONTENT_URI,
+                    arrayOf(ContactsContract.CommonDataKinds.Email.ADDRESS),
+                    "${ContactsContract.CommonDataKinds.Email.CONTACT_ID} = ?",
+                    arrayOf(contactId), null
+                )?.use { ec -> if (ec.moveToFirst()) email = ec.getString(ec.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Email.ADDRESS)) ?: email }
+                resolver.query(
+                    ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_URI,
+                    arrayOf(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS),
+                    "${ContactsContract.CommonDataKinds.StructuredPostal.CONTACT_ID} = ?",
+                    arrayOf(contactId), null
+                )?.use { ac -> if (ac.moveToFirst()) address = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS)) ?: address }
+            }
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) contactPickerLauncher.launch(null)
+    }
+
+    fun launchPicker() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            contactPickerLauncher.launch(null)
+        } else {
+            permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1857,11 +1906,23 @@ fun ContactForm(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = if (initial == null) "New Contact" else "Edit Contact",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (initial == null) "New Contact" else "Edit Contact",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "Import from Contacts",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 13.sp,
+                    modifier = Modifier.clickable { launchPicker() }
+                )
+            }
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
