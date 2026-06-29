@@ -108,6 +108,35 @@ data class Contact(
     }
 }
 
+// Parses a single-line address ("123 Main St, City, ST 12345") into components.
+data class ParsedAddress(val street: String = "", val street2: String = "", val city: String = "", val state: String = "", val zip: String = "")
+
+fun parseAddressLine(raw: String): ParsedAddress {
+    val parts = raw.split(",").map { it.trim() }.filter { it.isNotBlank() }
+    if (parts.isEmpty()) return ParsedAddress()
+    // Last segment is expected to be "State ZIP" or just "State"
+    val lastTokens = parts.last().split(Regex("\\s+")).filter { it.isNotBlank() }
+    val looksLikeStateZip = lastTokens.size in 1..2 && lastTokens.first().length <= 3
+    return when {
+        parts.size >= 3 && looksLikeStateZip -> {
+            val streetParts = parts.dropLast(2)
+            ParsedAddress(
+                street = streetParts.getOrElse(0) { "" },
+                street2 = streetParts.drop(1).joinToString(", "),
+                city = parts[parts.size - 2],
+                state = lastTokens.getOrElse(0) { "" },
+                zip = lastTokens.getOrElse(1) { "" }
+            )
+        }
+        parts.size == 2 && looksLikeStateZip -> ParsedAddress(
+            street = parts[0],
+            state = lastTokens.getOrElse(0) { "" },
+            zip = lastTokens.getOrElse(1) { "" }
+        )
+        else -> ParsedAddress(street = parts.first(), street2 = parts.drop(1).joinToString(", "))
+    }
+}
+
 // Returns schedules active on a given dateKey ("yyyy-MM-dd")
 fun schedulesForDate(schedules: List<MedicationSchedule>, dateKey: String): List<MedicationSchedule> =
     schedules.filter { it.startDate <= dateKey && (it.endDate == null || it.endDate >= dateKey) }
@@ -1910,6 +1939,7 @@ fun ContactForm(
                 resolver.query(
                     ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_URI,
                     arrayOf(
+                        ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS,
                         ContactsContract.CommonDataKinds.StructuredPostal.STREET,
                         ContactsContract.CommonDataKinds.StructuredPostal.CITY,
                         ContactsContract.CommonDataKinds.StructuredPostal.REGION,
@@ -1919,14 +1949,28 @@ fun ContactForm(
                     arrayOf(contactId), null
                 )?.use { ac ->
                     if (ac.moveToFirst()) {
-                        val streetRaw = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.STREET)) ?: ""
-                        val streetLines = streetRaw.split("\n").map { it.trim() }.filter { it.isNotBlank() }
-                        street = streetLines.getOrElse(0) { street }
-                        street2 = streetLines.getOrElse(1) { "" }
-                        city = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.CITY)) ?: city
-                        state = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.REGION)) ?: state
-                        zip = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE)) ?: zip
-
+                        val structuredCity = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.CITY))?.trim() ?: ""
+                        if (structuredCity.isNotBlank()) {
+                            val streetRaw = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.STREET)) ?: ""
+                            val streetLines = streetRaw.split("\n").map { it.trim() }.filter { it.isNotBlank() }
+                            street = streetLines.getOrElse(0) { "" }
+                            street2 = streetLines.getOrElse(1) { "" }
+                            city = structuredCity
+                            state = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.REGION))?.trim() ?: ""
+                            zip = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE))?.trim() ?: ""
+                        } else {
+                            val raw = (ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS))
+                                ?: ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.STREET))
+                                ?: "").trim()
+                            if (raw.isNotBlank()) {
+                                val parsed = parseAddressLine(raw)
+                                street = parsed.street
+                                street2 = parsed.street2
+                                city = parsed.city
+                                state = parsed.state
+                                zip = parsed.zip
+                            }
+                        }
                     }
                 }
             }
