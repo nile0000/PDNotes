@@ -90,6 +90,7 @@ data class Contact(
     val phone: String = "",
     val email: String = "",
     val street: String = "",
+    val street2: String = "",
     val city: String = "",
     val state: String = "",
     val zip: String = "",
@@ -101,7 +102,7 @@ data class Contact(
             city.ifBlank { null },
             state.ifBlank { null }
         ).joinToString(", ") + if (zip.isNotBlank()) " $zip" else ""
-        return listOf(street, cityStateZip.trim(), country)
+        return listOf(street, street2, cityStateZip.trim(), country)
             .filter { it.isNotBlank() }
             .joinToString("\n")
     }
@@ -300,6 +301,7 @@ fun PDNotesApp() {
                         phone = obj.optString("phone", ""),
                         email = obj.optString("email", ""),
                         street = obj.optString("street", obj.optString("address", "")),
+                        street2 = obj.optString("street2", ""),
                         city = obj.optString("city", ""),
                         state = obj.optString("state", ""),
                         zip = obj.optString("zip", ""),
@@ -322,6 +324,7 @@ fun PDNotesApp() {
             obj.put("phone", c.phone)
             obj.put("email", c.email)
             obj.put("street", c.street)
+            obj.put("street2", c.street2)
             obj.put("city", c.city)
             obj.put("state", c.state)
             obj.put("zip", c.zip)
@@ -1878,6 +1881,7 @@ fun ContactForm(
     var phone by remember(initial?.id) { mutableStateOf(initial?.phone ?: "") }
     var email by remember(initial?.id) { mutableStateOf(initial?.email ?: "") }
     var street by remember(initial?.id) { mutableStateOf(initial?.street ?: "") }
+    var street2 by remember(initial?.id) { mutableStateOf(initial?.street2 ?: "") }
     var city by remember(initial?.id) { mutableStateOf(initial?.city ?: "") }
     var state by remember(initial?.id) { mutableStateOf(initial?.state ?: "") }
     var zip by remember(initial?.id) { mutableStateOf(initial?.zip ?: "") }
@@ -2005,6 +2009,13 @@ fun ContactForm(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
+            OutlinedTextField(
+                value = street2,
+                onValueChange = { street2 = it },
+                label = { Text("Street 2 (optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = city,
@@ -2059,6 +2070,7 @@ fun ContactForm(
                                 phone = phone.trim(),
                                 email = email.trim(),
                                 street = street.trim(),
+                                street2 = street2.trim(),
                                 city = city.trim(),
                                 state = state.trim(),
                                 zip = zip.trim(),
