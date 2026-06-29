@@ -94,7 +94,7 @@ data class Contact(
     val city: String = "",
     val state: String = "",
     val zip: String = "",
-    val country: String = "",
+
     val notes: String = ""
 ) {
     val formattedAddress: String get() {
@@ -102,7 +102,7 @@ data class Contact(
             city.ifBlank { null },
             state.ifBlank { null }
         ).joinToString(", ") + if (zip.isNotBlank()) " $zip" else ""
-        return listOf(street, street2, cityStateZip.trim(), country)
+        return listOf(street, street2, cityStateZip.trim())
             .filter { it.isNotBlank() }
             .joinToString("\n")
     }
@@ -305,7 +305,7 @@ fun PDNotesApp() {
                         city = obj.optString("city", ""),
                         state = obj.optString("state", ""),
                         zip = obj.optString("zip", ""),
-                        country = obj.optString("country", ""),
+
                         notes = obj.optString("notes", "")
                     ))
                 }
@@ -328,7 +328,7 @@ fun PDNotesApp() {
             obj.put("city", c.city)
             obj.put("state", c.state)
             obj.put("zip", c.zip)
-            obj.put("country", c.country)
+
             obj.put("notes", c.notes)
             array.put(obj)
         }
@@ -1885,7 +1885,7 @@ fun ContactForm(
     var city by remember(initial?.id) { mutableStateOf(initial?.city ?: "") }
     var state by remember(initial?.id) { mutableStateOf(initial?.state ?: "") }
     var zip by remember(initial?.id) { mutableStateOf(initial?.zip ?: "") }
-    var country by remember(initial?.id) { mutableStateOf(initial?.country ?: "") }
+
     var notes by remember(initial?.id) { mutableStateOf(initial?.notes ?: "") }
 
     val contactPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
@@ -1913,8 +1913,7 @@ fun ContactForm(
                         ContactsContract.CommonDataKinds.StructuredPostal.STREET,
                         ContactsContract.CommonDataKinds.StructuredPostal.CITY,
                         ContactsContract.CommonDataKinds.StructuredPostal.REGION,
-                        ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE,
-                        ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY
+                        ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE
                     ),
                     "${ContactsContract.CommonDataKinds.StructuredPostal.CONTACT_ID} = ?",
                     arrayOf(contactId), null
@@ -1924,7 +1923,7 @@ fun ContactForm(
                         city = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.CITY)) ?: city
                         state = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.REGION)) ?: state
                         zip = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE)) ?: zip
-                        country = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY)) ?: country
+
                     }
                 }
             }
@@ -2043,13 +2042,6 @@ fun ContactForm(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                     )
                 )
-                OutlinedTextField(
-                    value = country,
-                    onValueChange = { country = it },
-                    label = { Text("Country") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
             }
             OutlinedTextField(
                 value = notes,
@@ -2074,7 +2066,7 @@ fun ContactForm(
                                 city = city.trim(),
                                 state = state.trim(),
                                 zip = zip.trim(),
-                                country = country.trim(),
+
                                 notes = notes.trim()
                             ))
                         }
