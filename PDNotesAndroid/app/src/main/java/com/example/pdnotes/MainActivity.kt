@@ -1969,7 +1969,7 @@ fun ContactForm(
                 onValueChange = { address = it },
                 label = { Text("Address (optional)") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                minLines = 2
             )
             OutlinedTextField(
                 value = notes,
