@@ -1919,7 +1919,10 @@ fun ContactForm(
                     arrayOf(contactId), null
                 )?.use { ac ->
                     if (ac.moveToFirst()) {
-                        street = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.STREET)) ?: street
+                        val streetRaw = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.STREET)) ?: ""
+                        val streetLines = streetRaw.split("\n").map { it.trim() }.filter { it.isNotBlank() }
+                        street = streetLines.getOrElse(0) { street }
+                        street2 = streetLines.getOrElse(1) { "" }
                         city = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.CITY)) ?: city
                         state = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.REGION)) ?: state
                         zip = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE)) ?: zip
