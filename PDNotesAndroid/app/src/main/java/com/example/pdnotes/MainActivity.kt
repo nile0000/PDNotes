@@ -86,12 +86,26 @@ data class Appointment(
 data class Contact(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
-    val role: String = "",   // e.g. Neurologist, Caregiver
+    val role: String = "",
     val phone: String = "",
     val email: String = "",
-    val address: String = "",
+    val street: String = "",
+    val city: String = "",
+    val state: String = "",
+    val zip: String = "",
+    val country: String = "",
     val notes: String = ""
-)
+) {
+    val formattedAddress: String get() {
+        val cityStateZip = listOfNotNull(
+            city.ifBlank { null },
+            state.ifBlank { null }
+        ).joinToString(", ") + if (zip.isNotBlank()) " $zip" else ""
+        return listOf(street, cityStateZip.trim(), country)
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+    }
+}
 
 // Returns schedules active on a given dateKey ("yyyy-MM-dd")
 fun schedulesForDate(schedules: List<MedicationSchedule>, dateKey: String): List<MedicationSchedule> =
@@ -285,7 +299,11 @@ fun PDNotesApp() {
                         role = obj.optString("role", ""),
                         phone = obj.optString("phone", ""),
                         email = obj.optString("email", ""),
-                        address = obj.optString("address", ""),
+                        street = obj.optString("street", obj.optString("address", "")),
+                        city = obj.optString("city", ""),
+                        state = obj.optString("state", ""),
+                        zip = obj.optString("zip", ""),
+                        country = obj.optString("country", ""),
                         notes = obj.optString("notes", "")
                     ))
                 }
@@ -303,7 +321,11 @@ fun PDNotesApp() {
             obj.put("role", c.role)
             obj.put("phone", c.phone)
             obj.put("email", c.email)
-            obj.put("address", c.address)
+            obj.put("street", c.street)
+            obj.put("city", c.city)
+            obj.put("state", c.state)
+            obj.put("zip", c.zip)
+            obj.put("country", c.country)
             obj.put("notes", c.notes)
             array.put(obj)
         }
@@ -1605,7 +1627,7 @@ fun AppointmentForm(
                                     .fillMaxWidth()
                                     .clickable {
                                         selectedContactId = contact.id
-                                        if (contact.address.isNotBlank()) location = contact.address
+                                        if (contact.formattedAddress.isNotBlank()) location = contact.formattedAddress
                                         showContactPicker = false
                                     }
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1646,7 +1668,7 @@ fun AppointmentForm(
                     onSave = { newContact ->
                         onAddContact(newContact)
                         selectedContactId = newContact.id
-                        if (newContact.address.isNotBlank()) location = newContact.address
+                        if (newContact.formattedAddress.isNotBlank()) location = newContact.formattedAddress
                         showAddContact = false
                     },
                     onCancel = { showAddContact = false }
@@ -1824,8 +1846,8 @@ fun ContactsScreen(
                             if (contact.email.isNotBlank()) {
                                 Text("✉ ${contact.email}", fontSize = 13.sp, color = Color.Gray)
                             }
-                            if (contact.address.isNotBlank()) {
-                                Text("📍 ${contact.address}", fontSize = 13.sp, color = Color.Gray)
+                            if (contact.formattedAddress.isNotBlank()) {
+                                Text("📍 ${contact.formattedAddress}", fontSize = 13.sp, color = Color.Gray)
                             }
                             if (contact.notes.isNotBlank()) {
                                 Text(contact.notes, fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
@@ -1855,7 +1877,11 @@ fun ContactForm(
     var role by remember(initial?.id) { mutableStateOf(initial?.role ?: "") }
     var phone by remember(initial?.id) { mutableStateOf(initial?.phone ?: "") }
     var email by remember(initial?.id) { mutableStateOf(initial?.email ?: "") }
-    var address by remember(initial?.id) { mutableStateOf(initial?.address ?: "") }
+    var street by remember(initial?.id) { mutableStateOf(initial?.street ?: "") }
+    var city by remember(initial?.id) { mutableStateOf(initial?.city ?: "") }
+    var state by remember(initial?.id) { mutableStateOf(initial?.state ?: "") }
+    var zip by remember(initial?.id) { mutableStateOf(initial?.zip ?: "") }
+    var country by remember(initial?.id) { mutableStateOf(initial?.country ?: "") }
     var notes by remember(initial?.id) { mutableStateOf(initial?.notes ?: "") }
 
     val contactPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
@@ -1879,10 +1905,24 @@ fun ContactForm(
                 )?.use { ec -> if (ec.moveToFirst()) email = ec.getString(ec.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Email.ADDRESS)) ?: email }
                 resolver.query(
                     ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_URI,
-                    arrayOf(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS),
+                    arrayOf(
+                        ContactsContract.CommonDataKinds.StructuredPostal.STREET,
+                        ContactsContract.CommonDataKinds.StructuredPostal.CITY,
+                        ContactsContract.CommonDataKinds.StructuredPostal.REGION,
+                        ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE,
+                        ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY
+                    ),
                     "${ContactsContract.CommonDataKinds.StructuredPostal.CONTACT_ID} = ?",
                     arrayOf(contactId), null
-                )?.use { ac -> if (ac.moveToFirst()) address = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS)) ?: address }
+                )?.use { ac ->
+                    if (ac.moveToFirst()) {
+                        street = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.STREET)) ?: street
+                        city = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.CITY)) ?: city
+                        state = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.REGION)) ?: state
+                        zip = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE)) ?: zip
+                        country = ac.getString(ac.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY)) ?: country
+                    }
+                }
             }
         }
     }
@@ -1957,13 +1997,49 @@ fun ContactForm(
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Email
                 )
             )
+            Text("Address", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.Gray)
             OutlinedTextField(
-                value = address,
-                onValueChange = { address = it },
-                label = { Text("Address (optional)") },
+                value = street,
+                onValueChange = { street = it },
+                label = { Text("Street") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = city,
+                    onValueChange = { city = it },
+                    label = { Text("City") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = state,
+                    onValueChange = { state = it },
+                    label = { Text("State") },
+                    modifier = Modifier.width(80.dp),
+                    singleLine = true
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = zip,
+                    onValueChange = { zip = it },
+                    label = { Text("ZIP") },
+                    modifier = Modifier.width(100.dp),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    )
+                )
+                OutlinedTextField(
+                    value = country,
+                    onValueChange = { country = it },
+                    label = { Text("Country") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+            }
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
@@ -1982,7 +2058,11 @@ fun ContactForm(
                                 role = role.trim(),
                                 phone = phone.trim(),
                                 email = email.trim(),
-                                address = address.trim(),
+                                street = street.trim(),
+                                city = city.trim(),
+                                state = state.trim(),
+                                zip = zip.trim(),
+                                country = country.trim(),
                                 notes = notes.trim()
                             ))
                         }
