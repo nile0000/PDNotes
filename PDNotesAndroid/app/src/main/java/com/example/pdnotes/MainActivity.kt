@@ -552,7 +552,7 @@ fun TrackerScreen(
                                 .background(Color(0xFFF2F2F2), shape = MaterialTheme.shapes.small)
                                 .padding(12.dp)) {
                                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(dayLabel, fontWeight = FontWeight.SemiBold)
+                                    Text(dayLabel, fontWeight = FontWeight.SemiBold, color = Color.Black)
                                     Spacer(modifier = Modifier.weight(1f))
                                     Text(
                                         text = if (apptCount > 0) "Appts ($apptCount)" else "Appts",
