@@ -60,6 +60,7 @@ data class MedicationSchedule(
 
 data class DayStatus(
     val taken: Boolean = false,
+    val takenNight: Boolean = false,
     val rating: DayRating = DayRating.NORMAL,
     val note: String = "",
     val exercise: String = "",
@@ -174,6 +175,7 @@ fun PDNotesApp() {
                     val obj = json.getJSONObject(key)
                     initialMap[key] = DayStatus(
                         taken = obj.optBoolean("taken"),
+                        takenNight = obj.optBoolean("takenNight"),
                         rating = runCatching { DayRating.valueOf(obj.optString("rating", "NORMAL")) }.getOrDefault(DayRating.NORMAL),
                         note = obj.optString("note"),
                         exercise = obj.optString("exercise"),
@@ -190,6 +192,7 @@ fun PDNotesApp() {
         dayStatuses.forEach { (date, status) ->
             val obj = JSONObject()
             obj.put("taken", status.taken)
+            obj.put("takenNight", status.takenNight)
             obj.put("rating", status.rating.name)
             obj.put("note", status.note)
             obj.put("exercise", status.exercise)
@@ -572,8 +575,19 @@ fun TrackerScreen(
                                         modifier = Modifier.clickable { onShowMedsForDate(dayKey) }
                                     )
                                     Spacer(modifier = Modifier.width(16.dp))
-                                    IconToggle(dayTaken = status.taken) {
-                                        dayStatuses[dayKey] = status.copy(taken = !status.taken)
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("Morning Meds", fontSize = 11.sp, color = Color.Gray)
+                                            IconToggle(dayTaken = status.taken) {
+                                                dayStatuses[dayKey] = status.copy(taken = !status.taken)
+                                            }
+                                        }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("Night Meds", fontSize = 11.sp, color = Color.Gray)
+                                            IconToggle(dayTaken = status.takenNight) {
+                                                dayStatuses[dayKey] = status.copy(takenNight = !status.takenNight)
+                                            }
+                                        }
                                     }
                                 }
 
