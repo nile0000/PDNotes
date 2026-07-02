@@ -1357,13 +1357,6 @@ fun CalendarView(
                                         },
                                         fontSize = 14.sp
                                     )
-                                    val anyTaken = status.takenDay || status.takenAfternoon || status.takenNight
-                                    Text(
-                                        text = if (anyTaken) "✔" else "○",
-                                        color = if (anyTaken) Color.Green else Color.Gray,
-                                        fontSize = 9.sp,
-                                        fontWeight = if (anyTaken) FontWeight.Bold else FontWeight.Normal
-                                    )
                                     val dayAppts = appointmentsForDate(appointments, dayKey)
                                     if (dayAppts.isNotEmpty()) {
                                         if (isPortrait) {

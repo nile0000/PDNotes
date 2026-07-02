@@ -14,13 +14,15 @@ struct PDNotesApp: App {
 
 enum TopScreen: String, CaseIterable {
     case tracker = "Tracker"
+    case calendar = "Calendar"
     case meds = "Meds"
     case notes = "Notes"
     case contacts = "Contacts"
 
     var systemImage: String {
         switch self {
-        case .tracker: return "calendar"
+        case .tracker: return "list.bullet.rectangle"
+        case .calendar: return "calendar"
         case .meds: return "pills"
         case .notes: return "note.text"
         case .contacts: return "person.crop.circle"
@@ -38,6 +40,10 @@ struct RootView: View {
             }
             .tabItem { Label(TopScreen.tracker.rawValue, systemImage: TopScreen.tracker.systemImage) }
             .tag(TopScreen.tracker)
+
+            CalendarScreen()
+                .tabItem { Label(TopScreen.calendar.rawValue, systemImage: TopScreen.calendar.systemImage) }
+                .tag(TopScreen.calendar)
 
             NavigationStack {
                 MedicationsScreen()

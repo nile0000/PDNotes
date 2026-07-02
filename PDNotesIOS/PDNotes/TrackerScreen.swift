@@ -113,7 +113,7 @@ struct TrackerScreen: View {
     }
 }
 
-private struct DayCard: View {
+struct DayCard: View {
     @EnvironmentObject var store: AppStore
     let date: Date
 
