@@ -59,7 +59,8 @@ data class MedicationSchedule(
 )
 
 data class DayStatus(
-    val taken: Boolean = false,
+    val takenDay: Boolean = false,
+    val takenAfternoon: Boolean = false,
     val takenNight: Boolean = false,
     val rating: DayRating = DayRating.NORMAL,
     val note: String = "",
@@ -174,7 +175,8 @@ fun PDNotesApp() {
                 json.keys().forEach { key ->
                     val obj = json.getJSONObject(key)
                     initialMap[key] = DayStatus(
-                        taken = obj.optBoolean("taken"),
+                        takenDay = obj.optBoolean("takenDay", obj.optBoolean("taken")),
+                        takenAfternoon = obj.optBoolean("takenAfternoon"),
                         takenNight = obj.optBoolean("takenNight"),
                         rating = runCatching { DayRating.valueOf(obj.optString("rating", "NORMAL")) }.getOrDefault(DayRating.NORMAL),
                         note = obj.optString("note"),
@@ -191,7 +193,8 @@ fun PDNotesApp() {
         val json = JSONObject()
         dayStatuses.forEach { (date, status) ->
             val obj = JSONObject()
-            obj.put("taken", status.taken)
+            obj.put("takenDay", status.takenDay)
+            obj.put("takenAfternoon", status.takenAfternoon)
             obj.put("takenNight", status.takenNight)
             obj.put("rating", status.rating.name)
             obj.put("note", status.note)
@@ -357,6 +360,10 @@ fun PDNotesApp() {
             dateKey = medsForDate!!,
             allSchedules = medicationSchedules,
             onAddSchedule = { medicationSchedules.add(it) },
+            onUpdateSchedule = { updated ->
+                val idx = medicationSchedules.indexOfFirst { it.id == updated.id }
+                if (idx >= 0) medicationSchedules[idx] = updated
+            },
             onRemoveSchedule = { id -> medicationSchedules.removeAll { it.id == id } },
             onBack = { medsForDate = null }
         )
@@ -440,6 +447,10 @@ fun PDNotesApp() {
             "meds" -> MedicationsScreen(
                 schedules = medicationSchedules,
                 onAdd = { medicationSchedules.add(it) },
+                onUpdate = { updated ->
+                    val idx = medicationSchedules.indexOfFirst { it.id == updated.id }
+                    if (idx >= 0) medicationSchedules[idx] = updated
+                },
                 onRemove = { id -> medicationSchedules.removeAll { it.id == id } }
             )
             "contacts" -> ContactsScreen(
@@ -575,17 +586,29 @@ fun TrackerScreen(
                                         modifier = Modifier.clickable { onShowMedsForDate(dayKey) }
                                     )
                                     Spacer(modifier = Modifier.width(16.dp))
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text("Morning Meds", fontSize = 11.sp, color = Color.Gray)
-                                            IconToggle(dayTaken = status.taken) {
-                                                dayStatuses[dayKey] = status.copy(taken = !status.taken)
+                                    val dayMeds = schedulesForDate(medicationSchedules, dayKey)
+                                    val hasDay = dayMeds.any { it.timing.equals("Day", ignoreCase = true) }
+                                    val hasAfternoon = dayMeds.any { it.timing.equals("Afternoon", ignoreCase = true) }
+                                    val hasNight = dayMeds.any { it.timing.equals("Night", ignoreCase = true) }
+                                    if (hasDay || hasAfternoon || hasNight) {
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            if (hasDay) Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text("Day", fontSize = 11.sp, color = Color.Gray)
+                                                IconToggle(dayTaken = status.takenDay) {
+                                                    dayStatuses[dayKey] = status.copy(takenDay = !status.takenDay)
+                                                }
                                             }
-                                        }
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text("Night Meds", fontSize = 11.sp, color = Color.Gray)
-                                            IconToggle(dayTaken = status.takenNight) {
-                                                dayStatuses[dayKey] = status.copy(takenNight = !status.takenNight)
+                                            if (hasAfternoon) Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text("Afternoon", fontSize = 11.sp, color = Color.Gray)
+                                                IconToggle(dayTaken = status.takenAfternoon) {
+                                                    dayStatuses[dayKey] = status.copy(takenAfternoon = !status.takenAfternoon)
+                                                }
+                                            }
+                                            if (hasNight) Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text("Night", fontSize = 11.sp, color = Color.Gray)
+                                                IconToggle(dayTaken = status.takenNight) {
+                                                    dayStatuses[dayKey] = status.copy(takenNight = !status.takenNight)
+                                                }
                                             }
                                         }
                                     }
@@ -708,11 +731,13 @@ fun DayMedicationScreen(
     dateKey: String,
     allSchedules: List<MedicationSchedule>,
     onAddSchedule: (MedicationSchedule) -> Unit,
+    onUpdateSchedule: (MedicationSchedule) -> Unit,
     onRemoveSchedule: (String) -> Unit,
     onBack: () -> Unit
 ) {
     val daySchedules = schedulesForDate(allSchedules, dateKey)
     var showAddForm by remember { mutableStateOf(false) }
+    var editingSchedule by remember { mutableStateOf<MedicationSchedule?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
         // Header
@@ -749,7 +774,19 @@ fun DayMedicationScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (showAddForm) {
+            val currentEditing = editingSchedule
+            if (currentEditing != null) {
+                AddMedicationForm(
+                    startDate = currentEditing.startDate,
+                    existing = currentEditing,
+                    onSave = { updated ->
+                        onUpdateSchedule(updated)
+                        editingSchedule = null
+                    },
+                    onCancel = { editingSchedule = null }
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            } else if (showAddForm) {
                 AddMedicationForm(
                     startDate = dateKey,
                     onSave = { schedule ->
@@ -771,36 +808,11 @@ fun DayMedicationScreen(
                 Text("No medications scheduled for this day.", color = Color.Gray)
             } else {
                 daySchedules.forEach { sched ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(sched.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                                if (sched.dose.isNotBlank()) Text("Dose: ${sched.dose}", fontSize = 13.sp, color = Color.Gray)
-                                if (sched.timing.isNotBlank()) Text("When: ${sched.timing}", fontSize = 13.sp, color = Color.Gray)
-                                if (sched.purpose.isNotBlank()) Text("Purpose: ${sched.purpose}", fontSize = 13.sp, color = Color.Gray)
-                                Text(
-                                    text = if (sched.endDate == null) "From ${sched.startDate} onwards"
-                                           else "${sched.startDate} – ${sched.endDate}",
-                                    fontSize = 11.sp,
-                                    color = Color.Gray,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                            }
-                            Text(
-                                "✕",
-                                color = Color.Red,
-                                fontSize = 18.sp,
-                                modifier = Modifier.padding(start = 8.dp).clickable { onRemoveSchedule(sched.id) }
-                            )
-                        }
-                    }
+                    MedicationScheduleCard(
+                        sched = sched,
+                        onRemove = onRemoveSchedule,
+                        onUpdate = onUpdateSchedule
+                    )
                 }
             }
         }
@@ -813,17 +825,19 @@ fun DayMedicationScreen(
 fun AddMedicationForm(
     startDate: String,
     onSave: (MedicationSchedule) -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    existing: MedicationSchedule? = null
 ) {
     val context = LocalContext.current
     val sdf = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
-    var name by remember { mutableStateOf("") }
-    var dose by remember { mutableStateOf("") }
-    var timing by remember { mutableStateOf("") }
-    var purpose by remember { mutableStateOf("") }
-    var pickedStartDate by remember { mutableStateOf(startDate) }
-    var pickedEndDate by remember { mutableStateOf<String?>(null) }
+    var name by remember { mutableStateOf(existing?.name ?: "") }
+    var dose by remember { mutableStateOf(existing?.dose ?: "") }
+    var timing by remember { mutableStateOf(existing?.timing ?: "") }
+    var timingExpanded by remember { mutableStateOf(false) }
+    var purpose by remember { mutableStateOf(existing?.purpose ?: "") }
+    var pickedStartDate by remember { mutableStateOf(existing?.startDate ?: startDate) }
+    var pickedEndDate by remember { mutableStateOf(existing?.endDate) }
 
     fun showDatePicker(current: String?, onPicked: (String) -> Unit) {
         val cal = Calendar.getInstance()
@@ -847,7 +861,7 @@ fun AddMedicationForm(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Add Medication", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(if (existing != null) "Edit Medication" else "Add Medication", fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
             OutlinedTextField(
                 value = name,
@@ -864,13 +878,32 @@ fun AddMedicationForm(
                     modifier = Modifier.weight(1f),
                     singleLine = true
                 )
-                OutlinedTextField(
-                    value = timing,
-                    onValueChange = { timing = it },
-                    label = { Text("When") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
+                ExposedDropdownMenuBox(
+                    expanded = timingExpanded,
+                    onExpandedChange = { timingExpanded = it },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = timing,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("When") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = timingExpanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        singleLine = true
+                    )
+                    ExposedDropdownMenu(
+                        expanded = timingExpanded,
+                        onDismissRequest = { timingExpanded = false }
+                    ) {
+                        listOf("Day", "Afternoon", "Night").forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = { timing = option; timingExpanded = false }
+                            )
+                        }
+                    }
+                }
             }
             OutlinedTextField(
                 value = purpose,
@@ -938,6 +971,7 @@ fun AddMedicationForm(
                     onClick = {
                         if (name.isNotBlank()) {
                             onSave(MedicationSchedule(
+                                id = existing?.id ?: java.util.UUID.randomUUID().toString(),
                                 name = name.trim(),
                                 dose = dose.trim(),
                                 timing = timing.trim(),
@@ -963,6 +997,7 @@ fun AddMedicationForm(
 fun MedicationsScreen(
     schedules: List<MedicationSchedule>,
     onAdd: (MedicationSchedule) -> Unit,
+    onUpdate: (MedicationSchedule) -> Unit,
     onRemove: (String) -> Unit
 ) {
     val today = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
@@ -1006,44 +1041,54 @@ fun MedicationsScreen(
         } else {
             if (active.isNotEmpty()) {
                 Text("Active", fontWeight = FontWeight.SemiBold, color = Color.Gray, fontSize = 13.sp)
-                active.forEach { sched -> MedicationScheduleCard(sched, onRemove) }
+                active.forEach { sched -> MedicationScheduleCard(sched, onRemove, onUpdate) }
             }
             if (past.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("Past", fontWeight = FontWeight.SemiBold, color = Color.Gray, fontSize = 13.sp)
-                past.forEach { sched -> MedicationScheduleCard(sched, onRemove) }
+                past.forEach { sched -> MedicationScheduleCard(sched, onRemove, onUpdate) }
             }
         }
     }
 }
 
 @Composable
-fun MedicationScheduleCard(sched: MedicationSchedule, onRemove: (String) -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(sched.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                if (sched.dose.isNotBlank()) Text("Dose: ${sched.dose}", fontSize = 13.sp, color = Color.Gray)
-                if (sched.timing.isNotBlank()) Text("When: ${sched.timing}", fontSize = 13.sp, color = Color.Gray)
-                if (sched.purpose.isNotBlank()) Text("Purpose: ${sched.purpose}", fontSize = 13.sp, color = Color.Gray)
+fun MedicationScheduleCard(sched: MedicationSchedule, onRemove: (String) -> Unit, onUpdate: (MedicationSchedule) -> Unit) {
+    var editing by remember { mutableStateOf(false) }
+    if (editing) {
+        AddMedicationForm(
+            startDate = sched.startDate,
+            existing = sched,
+            onSave = { updated -> onUpdate(updated); editing = false },
+            onCancel = { editing = false }
+        )
+    } else {
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable { editing = true },
+            shape = MaterialTheme.shapes.medium,
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(sched.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    if (sched.dose.isNotBlank()) Text("Dose: ${sched.dose}", fontSize = 13.sp, color = Color.Gray)
+                    if (sched.timing.isNotBlank()) Text("When: ${sched.timing}", fontSize = 13.sp, color = Color.Gray)
+                    if (sched.purpose.isNotBlank()) Text("Purpose: ${sched.purpose}", fontSize = 13.sp, color = Color.Gray)
+                    Text(
+                        text = if (sched.endDate == null) "From ${sched.startDate} onwards"
+                               else "${sched.startDate} – ${sched.endDate}",
+                        fontSize = 11.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
                 Text(
-                    text = if (sched.endDate == null) "From ${sched.startDate} onwards"
-                           else "${sched.startDate} – ${sched.endDate}",
-                    fontSize = 11.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(top = 4.dp)
+                    "✕",
+                    color = Color.Red,
+                    fontSize = 18.sp,
+                    modifier = Modifier.padding(start = 8.dp).clickable { onRemove(sched.id) }
                 )
             }
-            Text(
-                "✕",
-                color = Color.Red,
-                fontSize = 18.sp,
-                modifier = Modifier.padding(start = 8.dp).clickable { onRemove(sched.id) }
-            )
         }
     }
 }
@@ -1142,7 +1187,7 @@ fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSch
                                     fontSize = 18.sp,
                                     modifier = Modifier.alpha(if (status.isRead) 0.5f else 1f)
                                 )
-                                if (status.taken) {
+                                if (status.takenDay || status.takenAfternoon || status.takenNight) {
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("✔ Meds", color = if (status.isRead) Color.Gray else Color.Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
@@ -1313,11 +1358,12 @@ fun CalendarView(
                                         },
                                         fontSize = 14.sp
                                     )
+                                    val anyTaken = status.takenDay || status.takenAfternoon || status.takenNight
                                     Text(
-                                        text = if (status.taken) "✔" else "○",
-                                        color = if (status.taken) Color.Green else Color.Gray,
+                                        text = if (anyTaken) "✔" else "○",
+                                        color = if (anyTaken) Color.Green else Color.Gray,
                                         fontSize = 9.sp,
-                                        fontWeight = if (status.taken) FontWeight.Bold else FontWeight.Normal
+                                        fontWeight = if (anyTaken) FontWeight.Bold else FontWeight.Normal
                                     )
                                     val dayAppts = appointmentsForDate(appointments, dayKey)
                                     if (dayAppts.isNotEmpty()) {
