@@ -588,6 +588,7 @@ fun TrackerScreen(
                                     Text(
                                         text = if (apptCount > 0) "Appts ($apptCount)" else "Appts",
                                         color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.SemiBold,
                                         fontSize = 12.sp,
                                         modifier = Modifier.clickable { onShowAppointmentsForDate(dayKey) }
                                     )
@@ -595,6 +596,7 @@ fun TrackerScreen(
                                     Text(
                                         text = if (medsCount > 0) "Meds ($medsCount)" else "Meds",
                                         color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.SemiBold,
                                         fontSize = 12.sp,
                                         modifier = Modifier.clickable { onShowMedsForDate(dayKey) }
                                     )
@@ -618,7 +620,7 @@ fun TrackerScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Day Rating:", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text("Day Rating:", style = MaterialTheme.typography.bodySmall, color = Color.Black)
                                     RatingOption("😊", status.rating == DayRating.GOOD) {
                                         dayStatuses[dayKey] = status.copy(rating = DayRating.GOOD)
                                     }
@@ -633,7 +635,7 @@ fun TrackerScreen(
                                 TextField(
                                     value = status.note,
                                     onValueChange = { dayStatuses[dayKey] = status.copy(note = it) },
-                                    placeholder = { Text("Daily note...", fontSize = 12.sp) },
+                                    placeholder = { Text("Daily note...", fontSize = 12.sp, color = Color.DarkGray) },
                                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                                     textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
                                     colors = TextFieldDefaults.colors(
@@ -649,7 +651,7 @@ fun TrackerScreen(
                                 TextField(
                                     value = status.exercise,
                                     onValueChange = { dayStatuses[dayKey] = status.copy(exercise = it) },
-                                    placeholder = { Text("Exercise...", fontSize = 12.sp) },
+                                    placeholder = { Text("Exercise...", fontSize = 12.sp, color = Color.DarkGray) },
                                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                                     textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
                                     minLines = 2,
@@ -670,10 +672,12 @@ fun TrackerScreen(
                                     unfocusedIndicatorColor = Color.LightGray.copy(alpha = 0.5f),
                                     focusedIndicatorColor = MaterialTheme.colorScheme.primary,
                                     focusedTextColor = Color.Black,
-                                    unfocusedTextColor = Color.Black
+                                    unfocusedTextColor = Color.Black,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedLabelColor = Color.Black
                                 )
                                 HorizontalDivider(modifier = Modifier.padding(top = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
-                                Text("Symptoms", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
+                                Text("Symptoms", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.Black, modifier = Modifier.padding(top = 4.dp))
                                 listOf(
                                     "Tremors" to symptoms.tremors,
                                     "Legs" to symptoms.legs,
