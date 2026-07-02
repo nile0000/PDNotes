@@ -6,7 +6,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -511,6 +514,8 @@ fun TrackerScreen(
     }
     val dayFormatter = remember { SimpleDateFormat("EEE", Locale.getDefault()) }
     val weekLabel = remember(weekStartDate) { SimpleDateFormat("MMM d", Locale.getDefault()).format(weekStartDate) }
+    val todayKey = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
+    val todayBringIntoViewRequester = remember { BringIntoViewRequester() }
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -565,8 +570,16 @@ fun TrackerScreen(
                             val dayAppts = appointmentsForDate(appointments, dayKey)
                             val apptCount = dayAppts.size
 
+                            val isToday = dayKey == todayKey
+                            if (isToday) {
+                                LaunchedEffect(weekStartDate) {
+                                    todayBringIntoViewRequester.bringIntoView()
+                                }
+                            }
+
                             Column(modifier = Modifier
                                 .fillMaxWidth()
+                                .then(if (isToday) Modifier.bringIntoViewRequester(todayBringIntoViewRequester) else Modifier)
                                 .background(Color(0xFFF2F2F2), shape = MaterialTheme.shapes.small)
                                 .padding(12.dp)) {
                                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -585,33 +598,6 @@ fun TrackerScreen(
                                         fontSize = 12.sp,
                                         modifier = Modifier.clickable { onShowMedsForDate(dayKey) }
                                     )
-                                    Spacer(modifier = Modifier.width(16.dp))
-                                    val dayMeds = schedulesForDate(medicationSchedules, dayKey)
-                                    val hasDay = dayMeds.any { it.timing.equals("Day", ignoreCase = true) }
-                                    val hasAfternoon = dayMeds.any { it.timing.equals("Afternoon", ignoreCase = true) }
-                                    val hasNight = dayMeds.any { it.timing.equals("Night", ignoreCase = true) }
-                                    if (hasDay || hasAfternoon || hasNight) {
-                                        Column(horizontalAlignment = Alignment.End) {
-                                            if (hasDay) Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text("Day", fontSize = 11.sp, color = Color.Gray)
-                                                IconToggle(dayTaken = status.takenDay) {
-                                                    dayStatuses[dayKey] = status.copy(takenDay = !status.takenDay)
-                                                }
-                                            }
-                                            if (hasAfternoon) Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text("Afternoon", fontSize = 11.sp, color = Color.Gray)
-                                                IconToggle(dayTaken = status.takenAfternoon) {
-                                                    dayStatuses[dayKey] = status.copy(takenAfternoon = !status.takenAfternoon)
-                                                }
-                                            }
-                                            if (hasNight) Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text("Night", fontSize = 11.sp, color = Color.Gray)
-                                                IconToggle(dayTaken = status.takenNight) {
-                                                    dayStatuses[dayKey] = status.copy(takenNight = !status.takenNight)
-                                                }
-                                            }
-                                        }
-                                    }
                                 }
 
                                 if (apptCount > 0) {
@@ -1284,6 +1270,7 @@ fun CalendarView(
         }
     }
 
+    val todayKey = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
     val dayLabelFormatter = remember { SimpleDateFormat("EEE", Locale.getDefault()) }
     val monthLabel = remember(selectedYear, selectedMonth) {
         val cal = Calendar.getInstance()
@@ -1332,6 +1319,7 @@ fun CalendarView(
                         val status = dayStatuses[dayKey] ?: DayStatus()
                         val dayNum = dCal.get(Calendar.DAY_OF_MONTH)
                         val apptCount = appointmentsForDate(appointments, dayKey).size
+                        val isToday = dayKey == todayKey
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -1340,6 +1328,13 @@ fun CalendarView(
                                 .background(
                                     if (isSameMonth) Color(0xFFF2F2F2) else Color.Transparent,
                                     shape = MaterialTheme.shapes.extraSmall
+                                )
+                                .then(
+                                    if (isToday) Modifier.border(
+                                        2.dp,
+                                        MaterialTheme.colorScheme.primary,
+                                        shape = MaterialTheme.shapes.extraSmall
+                                    ) else Modifier
                                 )
                                 .then(if (isSameMonth) Modifier.clickable { tappedDay = dayKey } else Modifier),
                             contentAlignment = Alignment.Center
@@ -2102,16 +2097,3 @@ fun RatingOption(icon: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-@Composable
-fun IconToggle(dayTaken: Boolean, onToggle: () -> Unit) {
-    Box(
-        modifier = Modifier.size(40.dp).clickable(onClick = onToggle),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = if (dayTaken) "✔" else "○",
-            color = if (dayTaken) Color.Green else Color.Gray,
-            fontSize = 24.sp
-        )
-    }
-}
