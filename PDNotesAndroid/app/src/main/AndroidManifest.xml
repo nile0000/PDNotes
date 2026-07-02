@@ -3,6 +3,8 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <application
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="PDNotes"
         android:theme="@style/Theme.PDNotes">
         <activity android:name=".MainActivity" android:exported="true">

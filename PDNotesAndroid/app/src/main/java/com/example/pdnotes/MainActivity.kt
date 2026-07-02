@@ -37,6 +37,7 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.core.content.ContextCompat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -61,6 +62,7 @@ data class DayStatus(
     val taken: Boolean = false,
     val rating: DayRating = DayRating.NORMAL,
     val note: String = "",
+    val exercise: String = "",
     val isRead: Boolean = false
 )
 
@@ -174,6 +176,7 @@ fun PDNotesApp() {
                         taken = obj.optBoolean("taken"),
                         rating = runCatching { DayRating.valueOf(obj.optString("rating", "NORMAL")) }.getOrDefault(DayRating.NORMAL),
                         note = obj.optString("note"),
+                        exercise = obj.optString("exercise"),
                         isRead = obj.optBoolean("isRead")
                     )
                 }
@@ -189,6 +192,7 @@ fun PDNotesApp() {
             obj.put("taken", status.taken)
             obj.put("rating", status.rating.name)
             obj.put("note", status.note)
+            obj.put("exercise", status.exercise)
             obj.put("isRead", status.isRead)
             json.put(date, obj)
         }
@@ -366,7 +370,7 @@ fun PDNotesApp() {
     )
     var navExpanded by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
         Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(
                 modifier = Modifier
@@ -619,6 +623,23 @@ fun TrackerScreen(
                                     )
                                 )
 
+                                TextField(
+                                    value = status.exercise,
+                                    onValueChange = { dayStatuses[dayKey] = status.copy(exercise = it) },
+                                    placeholder = { Text("Exercise...", fontSize = 12.sp) },
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                    textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
+                                    minLines = 2,
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.LightGray.copy(alpha = 0.5f),
+                                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                                        focusedTextColor = Color.Black,
+                                        unfocusedTextColor = Color.Black
+                                    )
+                                )
+
                                 val symptoms = daySymptoms[dayKey] ?: DaySymptoms()
                                 val symptomTextFieldColors = TextFieldDefaults.colors(
                                     focusedContainerColor = Color.Transparent,
@@ -653,6 +674,7 @@ fun TrackerScreen(
                                         },
                                         label = { Text(label, fontSize = 12.sp) },
                                         modifier = Modifier.fillMaxWidth(),
+                                        minLines = 2,
                                         textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
                                         colors = symptomTextFieldColors
                                     )
@@ -678,7 +700,7 @@ fun DayMedicationScreen(
     val daySchedules = schedulesForDate(allSchedules, dateKey)
     var showAddForm by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
         // Header
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -1334,7 +1356,7 @@ fun DayAppointmentScreen(
     var showAddForm by remember { mutableStateOf(false) }
     var editingAppt by remember { mutableStateOf<Appointment?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
