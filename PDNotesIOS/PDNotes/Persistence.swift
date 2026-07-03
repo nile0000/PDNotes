@@ -34,6 +34,19 @@ enum SecureStore {
     }
 }
 
+/// Serializes persistence writes off the main thread so typing/UI updates
+/// never block on Keychain IPC. Serial (not concurrent) so writes for a
+/// given key still land in the order they were made.
+enum PersistenceQueue {
+    static let queue = DispatchQueue(label: "com.pdnotes.persistence")
+
+    /// Blocks until all writes enqueued so far have completed. Call when the
+    /// app is about to background/suspend so the latest edit isn't lost.
+    static func flush() {
+        queue.sync {}
+    }
+}
+
 enum PersistedStore<T: Codable> {
     static func load(key: String, default defaultValue: T) -> T {
         guard let data = SecureStore.load(key: key) else { return defaultValue }
@@ -41,7 +54,9 @@ enum PersistedStore<T: Codable> {
     }
 
     static func save(_ value: T, key: String) {
-        guard let data = try? JSONEncoder().encode(value) else { return }
-        SecureStore.save(data, key: key)
+        PersistenceQueue.queue.async {
+            guard let data = try? JSONEncoder().encode(value) else { return }
+            SecureStore.save(data, key: key)
+        }
     }
 }

@@ -178,18 +178,19 @@ struct DayCard: View {
                 }
             }
 
-            TextField("Daily note...", text: Binding(
-                get: { status.note },
-                set: { newValue in store.updateStatus(for: dayKey) { $0.note = newValue } }
-            ))
-            .font(.caption)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Daily Note").font(.caption2).foregroundStyle(.secondary)
+                TextField("", text: Binding(
+                    get: { status.note },
+                    set: { newValue in store.updateStatus(for: dayKey) { $0.note = newValue } }
+                ))
+                .font(.caption)
+            }
 
-            TextField("Exercise...", text: Binding(
+            symptomField("Exercise", value: Binding(
                 get: { status.exercise },
                 set: { newValue in store.updateStatus(for: dayKey) { $0.exercise = newValue } }
-            ), axis: .vertical)
-            .lineLimit(2...)
-            .font(.caption)
+            ))
 
             Divider()
 
@@ -228,8 +229,11 @@ struct DayCard: View {
     }
 
     private func symptomField(_ label: String, value: Binding<String>) -> some View {
-        TextField(label, text: value, axis: .vertical)
-            .lineLimit(2...)
-            .font(.caption)
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+            TextField("", text: value, axis: .vertical)
+                .lineLimit(2...)
+                .font(.caption)
+        }
     }
 }

@@ -106,15 +106,16 @@ final class AppStore: ObservableObject {
     }
 
     var notesDays: [(dateKey: String, status: DayStatus)] {
-        dayStatuses
-            .filter { !$0.value.note.isEmpty }
-            .map { (dateKey: $0.key, status: $0.value) }
+        let noteDates = Set(dayStatuses.filter { !$0.value.note.isEmpty || !$0.value.exercise.isEmpty }.keys)
+        let symptomDates = Set(daySymptoms.filter { $0.value.hasContent }.keys)
+        return noteDates.union(symptomDates)
+            .map { (dateKey: $0, status: dayStatuses[$0] ?? DayStatus()) }
             .sorted { $0.dateKey > $1.dateKey }
     }
 
     func markAllNotesRead() {
-        for (dateKey, status) in dayStatuses where !status.note.isEmpty && !status.isRead {
-            dayStatuses[dateKey]?.isRead = true
+        for entry in notesDays where !entry.status.isRead {
+            updateStatus(for: entry.dateKey) { $0.isRead = true }
         }
     }
 }

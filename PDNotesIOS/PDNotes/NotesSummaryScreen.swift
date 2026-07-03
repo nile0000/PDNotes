@@ -65,7 +65,7 @@ private struct NoteCard: View {
     let status: DayStatus
 
     var body: some View {
-        let meds = store.schedules(for: dateKey)
+        let symptoms = store.symptoms(for: dateKey)
 
         VStack(alignment: .leading, spacing: 4) {
             HStack {
@@ -75,12 +75,6 @@ private struct NoteCard: View {
                 Text(status.rating.emoji)
                     .font(.system(size: 18))
                     .opacity(status.isRead ? 0.5 : 1)
-                if status.takenDay || status.takenAfternoon || status.takenNight {
-                    Text("✔ Meds")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundStyle(status.isRead ? Color.secondary : Color.green)
-                }
                 Spacer()
                 Button(status.isRead ? "Unarchive" : "Mark Read") {
                     store.updateStatus(for: dateKey) { $0.isRead.toggle() }
@@ -88,29 +82,47 @@ private struct NoteCard: View {
                 .font(.caption)
             }
 
-            if !meds.isEmpty {
-                VStack(alignment: .leading, spacing: 1) {
-                    ForEach(meds) { med in
-                        if !med.name.isEmpty {
-                            let detail = [med.dose, med.timing, med.purpose.isEmpty ? "" : "(\(med.purpose))"]
-                                .filter { !$0.isEmpty }
-                                .joined(separator: " ")
-                            Text("• \(med.name)\(detail.isEmpty ? "" : ": \(detail)")")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .opacity(status.isRead ? 0.5 : 1)
-                        }
-                    }
-                }
-                .padding(.top, 2)
+            if !status.note.isEmpty {
+                Text(status.note)
+                    .foregroundStyle(status.isRead ? .secondary : .primary)
+                    .padding(.top, 8)
             }
 
-            Text(status.note)
-                .foregroundStyle(status.isRead ? .secondary : .primary)
+            if !status.exercise.isEmpty {
+                Text("• Exercise: \(status.exercise)")
+                    .font(.caption)
+                    .foregroundStyle(status.isRead ? Color.secondary : Color(.darkGray))
+                    .padding(.top, 4)
+            }
+
+            if symptoms.hasContent {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Symptoms")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(status.isRead ? .secondary : .primary)
+                    symptomLine("Tremors", symptoms.tremors, isRead: status.isRead)
+                    symptomLine("Legs", symptoms.legs, isRead: status.isRead)
+                    symptomLine("Plumbing", symptoms.plumbing, isRead: status.isRead)
+                    symptomLine("Neuropathy", symptoms.neuropathy, isRead: status.isRead)
+                    symptomLine("Sleep", symptoms.sleep, isRead: status.isRead)
+                    symptomLine("Diet", symptoms.diet, isRead: status.isRead)
+                }
                 .padding(.top, 8)
+            }
         }
         .padding(12)
         .background(status.isRead ? Color(.systemGray5) : Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    @ViewBuilder
+    private func symptomLine(_ label: String, _ value: String, isRead: Bool) -> some View {
+        if !value.isEmpty {
+            Text("• \(label): \(value)")
+                .font(.caption)
+                .foregroundStyle(isRead ? Color.secondary : Color(.darkGray))
+                .padding(.top, 1)
+        }
     }
 }

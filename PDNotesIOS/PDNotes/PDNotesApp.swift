@@ -3,11 +3,17 @@ import SwiftUI
 @main
 struct PDNotesApp: App {
     @StateObject private var store = AppStore()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(store)
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .background {
+                PersistenceQueue.flush()
+            }
         }
     }
 }

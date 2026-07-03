@@ -49,6 +49,11 @@ struct DaySymptoms: Codable, Equatable {
     var neuropathy: String = ""
     var sleep: String = ""
     var diet: String = ""
+
+    var hasContent: Bool {
+        !tremors.isEmpty || !legs.isEmpty || !plumbing.isEmpty ||
+        !neuropathy.isEmpty || !sleep.isEmpty || !diet.isEmpty
+    }
 }
 
 struct Appointment: Codable, Identifiable, Equatable {

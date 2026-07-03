@@ -465,7 +465,7 @@ fun PDNotesApp() {
                 },
                 onRemove = { id -> contacts.removeAll { it.id == id } }
             )
-            else -> NotesSummaryScreen(dayStatuses = dayStatuses, medicationSchedules = medicationSchedules)
+            else -> NotesSummaryScreen(dayStatuses = dayStatuses, daySymptoms = daySymptoms)
         }
     }
 }
@@ -635,7 +635,7 @@ fun TrackerScreen(
                                 TextField(
                                     value = status.note,
                                     onValueChange = { dayStatuses[dayKey] = status.copy(note = it) },
-                                    placeholder = { Text("Daily note...", fontSize = 12.sp, color = Color.DarkGray) },
+                                    label = { Text("Daily Note", fontSize = 12.sp) },
                                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                                     textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
                                     colors = TextFieldDefaults.colors(
@@ -651,7 +651,7 @@ fun TrackerScreen(
                                 TextField(
                                     value = status.exercise,
                                     onValueChange = { dayStatuses[dayKey] = status.copy(exercise = it) },
-                                    placeholder = { Text("Exercise...", fontSize = 12.sp, color = Color.DarkGray) },
+                                    label = { Text("Exercise", fontSize = 12.sp) },
                                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                                     textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
                                     minLines = 2,
@@ -1085,18 +1085,28 @@ fun MedicationScheduleCard(sched: MedicationSchedule, onRemove: (String) -> Unit
 
 // MARK: - Notes summary screen
 
+fun daySymptomsHasContent(s: DaySymptoms): Boolean =
+    s.tremors.isNotBlank() || s.legs.isNotBlank() || s.plumbing.isNotBlank() ||
+    s.neuropathy.isNotBlank() || s.sleep.isNotBlank() || s.diet.isNotBlank()
+
 @Composable
-fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSchedules: List<MedicationSchedule>) {
+fun NotesSummaryScreen(
+    dayStatuses: MutableMap<String, DayStatus>,
+    daySymptoms: Map<String, DaySymptoms>
+) {
     var showRead by remember { mutableStateOf(false) }
     var showBadDaysOnly by remember { mutableStateOf(false) }
 
-    val filteredNotes = dayStatuses.filter {
-        it.value.note.isNotBlank() &&
-        (showRead || !it.value.isRead) &&
-        (!showBadDaysOnly || it.value.rating == DayRating.BAD)
-    }
-    .toList()
-    .sortedByDescending { it.first }
+    val relevantDates = (dayStatuses.filterValues { it.note.isNotBlank() || it.exercise.isNotBlank() }.keys +
+        daySymptoms.filterValues { daySymptomsHasContent(it) }.keys).toSet()
+
+    val filteredNotes = relevantDates
+        .map { date -> date to (dayStatuses[date] ?: DayStatus()) }
+        .filter { (_, status) ->
+            (showRead || !status.isRead) &&
+            (!showBadDaysOnly || status.rating == DayRating.BAD)
+        }
+        .sortedByDescending { it.first }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
@@ -1116,9 +1126,9 @@ fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSch
                     text = "Mark All Read",
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable {
-                        dayStatuses.forEach { (date, status) ->
-                            if (status.note.isNotBlank() && !status.isRead)
-                                dayStatuses[date] = status.copy(isRead = true)
+                        relevantDates.forEach { date ->
+                            val status = dayStatuses[date] ?: DayStatus()
+                            if (!status.isRead) dayStatuses[date] = status.copy(isRead = true)
                         }
                     }
                 )
@@ -1152,7 +1162,7 @@ fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSch
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 filteredNotes.forEach { (date, status) ->
-                    val meds = schedulesForDate(medicationSchedules, date)
+                    val symptoms = daySymptoms[date] ?: DaySymptoms()
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -1177,10 +1187,6 @@ fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSch
                                     fontSize = 18.sp,
                                     modifier = Modifier.alpha(if (status.isRead) 0.5f else 1f)
                                 )
-                                if (status.takenDay || status.takenAfternoon || status.takenNight) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("✔ Meds", color = if (status.isRead) Color.Gray else Color.Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
                                 Spacer(modifier = Modifier.weight(1f))
                                 Text(
                                     text = if (status.isRead) "Unarchive" else "Mark Read",
@@ -1192,32 +1198,51 @@ fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSch
                                 )
                             }
 
-                            if (meds.isNotEmpty()) {
-                                Column(modifier = Modifier.padding(top = 4.dp)) {
-                                    meds.forEach { med ->
-                                        if (med.name.isNotBlank()) {
-                                            val detail = listOfNotNull(
-                                                med.dose.ifBlank { null },
-                                                med.timing.ifBlank { null },
-                                                med.purpose.ifBlank { null }?.let { "($it)" }
-                                            ).joinToString(" ")
+                            if (status.note.isNotBlank()) {
+                                Text(
+                                    text = status.note,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (status.isRead) Color.Gray else Color.Black,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                            }
+
+                            if (status.exercise.isNotBlank()) {
+                                Text(
+                                    text = "• Exercise: ${status.exercise}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (status.isRead) Color.Gray else Color.DarkGray,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+
+                            if (daySymptomsHasContent(symptoms)) {
+                                Column(modifier = Modifier.padding(top = 8.dp)) {
+                                    Text(
+                                        text = "Symptoms",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (status.isRead) Color.Gray else Color.Black
+                                    )
+                                    listOf(
+                                        "Tremors" to symptoms.tremors,
+                                        "Legs" to symptoms.legs,
+                                        "Plumbing" to symptoms.plumbing,
+                                        "Neuropathy" to symptoms.neuropathy,
+                                        "Sleep" to symptoms.sleep,
+                                        "Diet" to symptoms.diet
+                                    ).forEach { (label, value) ->
+                                        if (value.isNotBlank()) {
                                             Text(
-                                                text = "• ${med.name}${if (detail.isNotBlank()) ": $detail" else ""}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = Color.Gray,
-                                                modifier = Modifier.alpha(if (status.isRead) 0.5f else 1f)
+                                                text = "• $label: $value",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (status.isRead) Color.Gray else Color.DarkGray,
+                                                modifier = Modifier.padding(top = 2.dp)
                                             )
                                         }
                                     }
                                 }
                             }
-
-                            Text(
-                                text = status.note,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (status.isRead) Color.Gray else Color.Black,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
                         }
                     }
                 }
