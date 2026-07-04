@@ -77,7 +77,8 @@ data class DaySymptoms(
     val plumbing: String = "",
     val neuropathy: String = "",
     val sleep: String = "",
-    val diet: String = ""
+    val diet: String = "",
+    val pain: String = ""
 )
 
 data class Appointment(
@@ -222,7 +223,8 @@ fun PDNotesApp() {
                         plumbing = obj.optString("plumbing"),
                         neuropathy = obj.optString("neuropathy"),
                         sleep = obj.optString("sleep"),
-                        diet = obj.optString("diet")
+                        diet = obj.optString("diet"),
+                        pain = obj.optString("pain")
                     )
                 }
             } catch (e: Exception) { Log.e(TAG, "Failed to load day symptoms", e) }
@@ -240,6 +242,7 @@ fun PDNotesApp() {
             obj.put("neuropathy", s.neuropathy)
             obj.put("sleep", s.sleep)
             obj.put("diet", s.diet)
+            obj.put("pain", s.pain)
             json.put(date, obj)
         }
         sharedPrefs.edit { putString("day_symptoms", json.toString()) }
@@ -684,7 +687,8 @@ fun TrackerScreen(
                                     "Plumbing" to symptoms.plumbing,
                                     "Neuropathy" to symptoms.neuropathy,
                                     "Sleep" to symptoms.sleep,
-                                    "Diet" to symptoms.diet
+                                    "Diet" to symptoms.diet,
+                                    "Pain" to symptoms.pain
                                 ).forEach { (label, value) ->
                                     TextField(
                                         value = value,
@@ -695,7 +699,8 @@ fun TrackerScreen(
                                                 "Plumbing" -> symptoms.copy(plumbing = newVal)
                                                 "Neuropathy" -> symptoms.copy(neuropathy = newVal)
                                                 "Sleep" -> symptoms.copy(sleep = newVal)
-                                                else -> symptoms.copy(diet = newVal)
+                                                "Diet" -> symptoms.copy(diet = newVal)
+                                                else -> symptoms.copy(pain = newVal)
                                             }
                                             daySymptoms[dayKey] = updated
                                         },
@@ -1087,7 +1092,7 @@ fun MedicationScheduleCard(sched: MedicationSchedule, onRemove: (String) -> Unit
 
 fun daySymptomsHasContent(s: DaySymptoms): Boolean =
     s.tremors.isNotBlank() || s.legs.isNotBlank() || s.plumbing.isNotBlank() ||
-    s.neuropathy.isNotBlank() || s.sleep.isNotBlank() || s.diet.isNotBlank()
+    s.neuropathy.isNotBlank() || s.sleep.isNotBlank() || s.diet.isNotBlank() || s.pain.isNotBlank()
 
 @Composable
 fun NotesSummaryScreen(
@@ -1230,7 +1235,8 @@ fun NotesSummaryScreen(
                                         "Plumbing" to symptoms.plumbing,
                                         "Neuropathy" to symptoms.neuropathy,
                                         "Sleep" to symptoms.sleep,
-                                        "Diet" to symptoms.diet
+                                        "Diet" to symptoms.diet,
+                                        "Pain" to symptoms.pain
                                     ).forEach { (label, value) ->
                                         if (value.isNotBlank()) {
                                             Text(
@@ -1785,7 +1791,7 @@ fun SymptomsScreen(daySymptoms: Map<String, DaySymptoms>) {
     val entries = daySymptoms
         .filter { (_, s) ->
             s.tremors.isNotBlank() || s.legs.isNotBlank() || s.plumbing.isNotBlank() ||
-            s.neuropathy.isNotBlank() || s.sleep.isNotBlank() || s.diet.isNotBlank()
+            s.neuropathy.isNotBlank() || s.sleep.isNotBlank() || s.diet.isNotBlank() || s.pain.isNotBlank()
         }
         .toList()
         .sortedByDescending { it.first }
@@ -1817,7 +1823,8 @@ fun SymptomsScreen(daySymptoms: Map<String, DaySymptoms>) {
                             "Plumbing" to s.plumbing,
                             "Neuropathy" to s.neuropathy,
                             "Sleep" to s.sleep,
-                            "Diet" to s.diet
+                            "Diet" to s.diet,
+                            "Pain" to s.pain
                         ).filter { it.second.isNotBlank() }.forEach { (label, value) ->
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Text(

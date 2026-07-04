@@ -107,6 +107,7 @@ private struct NoteCard: View {
                     symptomLine("Neuropathy", symptoms.neuropathy, isRead: status.isRead)
                     symptomLine("Sleep", symptoms.sleep, isRead: status.isRead)
                     symptomLine("Diet", symptoms.diet, isRead: status.isRead)
+                    symptomLine("Pain", symptoms.pain, isRead: status.isRead)
                 }
                 .padding(.top, 8)
             }

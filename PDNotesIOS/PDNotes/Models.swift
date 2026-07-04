@@ -49,10 +49,34 @@ struct DaySymptoms: Codable, Equatable {
     var neuropathy: String = ""
     var sleep: String = ""
     var diet: String = ""
+    var pain: String = ""
 
     var hasContent: Bool {
         !tremors.isEmpty || !legs.isEmpty || !plumbing.isEmpty ||
-        !neuropathy.isEmpty || !sleep.isEmpty || !diet.isEmpty
+        !neuropathy.isEmpty || !sleep.isEmpty || !diet.isEmpty || !pain.isEmpty
+    }
+
+    init(tremors: String = "", legs: String = "", plumbing: String = "", neuropathy: String = "", sleep: String = "", diet: String = "", pain: String = "") {
+        self.tremors = tremors
+        self.legs = legs
+        self.plumbing = plumbing
+        self.neuropathy = neuropathy
+        self.sleep = sleep
+        self.diet = diet
+        self.pain = pain
+    }
+
+    // Custom decoding so existing persisted entries (saved before "pain" existed)
+    // still decode instead of falling back to an empty dictionary.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        tremors = try container.decodeIfPresent(String.self, forKey: .tremors) ?? ""
+        legs = try container.decodeIfPresent(String.self, forKey: .legs) ?? ""
+        plumbing = try container.decodeIfPresent(String.self, forKey: .plumbing) ?? ""
+        neuropathy = try container.decodeIfPresent(String.self, forKey: .neuropathy) ?? ""
+        sleep = try container.decodeIfPresent(String.self, forKey: .sleep) ?? ""
+        diet = try container.decodeIfPresent(String.self, forKey: .diet) ?? ""
+        pain = try container.decodeIfPresent(String.self, forKey: .pain) ?? ""
     }
 }
 

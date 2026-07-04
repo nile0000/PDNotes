@@ -222,6 +222,10 @@ struct DayCard: View {
                 get: { symptoms.diet },
                 set: { newValue in store.updateSymptoms(for: dayKey) { $0.diet = newValue } }
             ))
+            symptomField("Pain", value: Binding(
+                get: { symptoms.pain },
+                set: { newValue in store.updateSymptoms(for: dayKey) { $0.pain = newValue } }
+            ))
         }
         .padding(12)
         .background(Color(.secondarySystemBackground))
