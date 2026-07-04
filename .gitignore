@@ -21,3 +21,11 @@ PDNotesAndroid/local.properties
 *.iws
 *.ipr
 out/
+
+# Xcode
+xcuserdata/
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+PDNotesIOS/build/
