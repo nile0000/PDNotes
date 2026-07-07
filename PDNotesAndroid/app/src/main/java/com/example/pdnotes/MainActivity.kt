@@ -5,9 +5,11 @@ package com.weinman.pdnotes
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.*
@@ -19,7 +21,9 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +55,13 @@ private const val TAG = "PDNotes"
 
 enum class DayRating { GOOD, NORMAL, BAD }
 
+enum class TrendRange(val label: String, val days: Int) {
+    WEEK("1W", 7),
+    MONTH("1M", 30),
+    THREE_MONTHS("3M", 90),
+    SIX_MONTHS("6M", 180)
+}
+
 data class MedicationSchedule(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
@@ -73,11 +84,19 @@ data class DayStatus(
 
 data class DaySymptoms(
     val tremors: String = "",
+    val tremorsSeverity: Int = 0,
     val legs: String = "",
+    val legsSeverity: Int = 0,
     val plumbing: String = "",
+    val plumbingSeverity: Int = 0,
     val neuropathy: String = "",
+    val neuropathySeverity: Int = 0,
     val sleep: String = "",
-    val diet: String = ""
+    val sleepSeverity: Int = 0,
+    val diet: String = "",
+    val dietSeverity: Int = 0,
+    val pain: String = "",
+    val painSeverity: Int = 0
 )
 
 data class Appointment(
@@ -218,11 +237,19 @@ fun PDNotesApp() {
                     val obj = json.getJSONObject(key)
                     initialMap[key] = DaySymptoms(
                         tremors = obj.optString("tremors"),
+                        tremorsSeverity = obj.optInt("tremorsSeverity"),
                         legs = obj.optString("legs"),
+                        legsSeverity = obj.optInt("legsSeverity"),
                         plumbing = obj.optString("plumbing"),
+                        plumbingSeverity = obj.optInt("plumbingSeverity"),
                         neuropathy = obj.optString("neuropathy"),
+                        neuropathySeverity = obj.optInt("neuropathySeverity"),
                         sleep = obj.optString("sleep"),
-                        diet = obj.optString("diet")
+                        sleepSeverity = obj.optInt("sleepSeverity"),
+                        diet = obj.optString("diet"),
+                        dietSeverity = obj.optInt("dietSeverity"),
+                        pain = obj.optString("pain"),
+                        painSeverity = obj.optInt("painSeverity")
                     )
                 }
             } catch (e: Exception) { Log.e(TAG, "Failed to load day symptoms", e) }
@@ -235,11 +262,19 @@ fun PDNotesApp() {
         daySymptoms.forEach { (date, s) ->
             val obj = JSONObject()
             obj.put("tremors", s.tremors)
+            obj.put("tremorsSeverity", s.tremorsSeverity)
             obj.put("legs", s.legs)
+            obj.put("legsSeverity", s.legsSeverity)
             obj.put("plumbing", s.plumbing)
+            obj.put("plumbingSeverity", s.plumbingSeverity)
             obj.put("neuropathy", s.neuropathy)
+            obj.put("neuropathySeverity", s.neuropathySeverity)
             obj.put("sleep", s.sleep)
+            obj.put("sleepSeverity", s.sleepSeverity)
             obj.put("diet", s.diet)
+            obj.put("dietSeverity", s.dietSeverity)
+            obj.put("pain", s.pain)
+            obj.put("painSeverity", s.painSeverity)
             json.put(date, obj)
         }
         sharedPrefs.edit { putString("day_symptoms", json.toString()) }
@@ -379,6 +414,7 @@ fun PDNotesApp() {
         "meds" to "Meds",
         "notes" to "All Notes",
         "symptoms" to "Symptoms",
+        "trends" to "Trends",
         "contacts" to "Contacts"
     )
     var navExpanded by remember { mutableStateOf(false) }
@@ -447,6 +483,7 @@ fun PDNotesApp() {
                 onShowAppointments = { appointmentForDate = it }
             )
             "symptoms" -> SymptomsScreen(daySymptoms = daySymptoms)
+            "trends" -> SymptomTrendsScreen(daySymptoms = daySymptoms)
             "meds" -> MedicationsScreen(
                 schedules = medicationSchedules,
                 onAdd = { medicationSchedules.add(it) },
@@ -465,7 +502,7 @@ fun PDNotesApp() {
                 },
                 onRemove = { id -> contacts.removeAll { it.id == id } }
             )
-            else -> NotesSummaryScreen(dayStatuses = dayStatuses, medicationSchedules = medicationSchedules)
+            else -> NotesSummaryScreen(dayStatuses = dayStatuses, daySymptoms = daySymptoms)
         }
     }
 }
@@ -635,7 +672,7 @@ fun TrackerScreen(
                                 TextField(
                                     value = status.note,
                                     onValueChange = { dayStatuses[dayKey] = status.copy(note = it) },
-                                    placeholder = { Text("Daily note...", fontSize = 12.sp, color = Color.DarkGray) },
+                                    label = { Text("Daily Note", fontSize = 12.sp) },
                                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                                     textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
                                     colors = TextFieldDefaults.colors(
@@ -651,7 +688,7 @@ fun TrackerScreen(
                                 TextField(
                                     value = status.exercise,
                                     onValueChange = { dayStatuses[dayKey] = status.copy(exercise = it) },
-                                    placeholder = { Text("Exercise...", fontSize = 12.sp, color = Color.DarkGray) },
+                                    label = { Text("Exercise", fontSize = 12.sp) },
                                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                                     textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
                                     minLines = 2,
@@ -679,6 +716,7 @@ fun TrackerScreen(
                                 HorizontalDivider(modifier = Modifier.padding(top = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
                                 Text("Symptoms", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.Black, modifier = Modifier.padding(top = 4.dp))
                                 listOf(
+                                    "Pain" to symptoms.pain,
                                     "Tremors" to symptoms.tremors,
                                     "Legs" to symptoms.legs,
                                     "Plumbing" to symptoms.plumbing,
@@ -686,10 +724,37 @@ fun TrackerScreen(
                                     "Sleep" to symptoms.sleep,
                                     "Diet" to symptoms.diet
                                 ).forEach { (label, value) ->
+                                    val severity = when (label) {
+                                        "Pain" -> symptoms.painSeverity
+                                        "Tremors" -> symptoms.tremorsSeverity
+                                        "Legs" -> symptoms.legsSeverity
+                                        "Plumbing" -> symptoms.plumbingSeverity
+                                        "Neuropathy" -> symptoms.neuropathySeverity
+                                        "Sleep" -> symptoms.sleepSeverity
+                                        else -> symptoms.dietSeverity
+                                    }
+                                    Text(label, fontSize = 12.sp, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
+                                    SeverityRating(
+                                        value = severity,
+                                        onChange = { newSeverity ->
+                                            val updated = when (label) {
+                                                "Pain" -> symptoms.copy(painSeverity = newSeverity)
+                                                "Tremors" -> symptoms.copy(tremorsSeverity = newSeverity)
+                                                "Legs" -> symptoms.copy(legsSeverity = newSeverity)
+                                                "Plumbing" -> symptoms.copy(plumbingSeverity = newSeverity)
+                                                "Neuropathy" -> symptoms.copy(neuropathySeverity = newSeverity)
+                                                "Sleep" -> symptoms.copy(sleepSeverity = newSeverity)
+                                                else -> symptoms.copy(dietSeverity = newSeverity)
+                                            }
+                                            daySymptoms[dayKey] = updated
+                                        },
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
                                     TextField(
                                         value = value,
                                         onValueChange = { newVal ->
                                             val updated = when (label) {
+                                                "Pain" -> symptoms.copy(pain = newVal)
                                                 "Tremors" -> symptoms.copy(tremors = newVal)
                                                 "Legs" -> symptoms.copy(legs = newVal)
                                                 "Plumbing" -> symptoms.copy(plumbing = newVal)
@@ -699,9 +764,8 @@ fun TrackerScreen(
                                             }
                                             daySymptoms[dayKey] = updated
                                         },
-                                        label = { Text(label, fontSize = 12.sp) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        minLines = 2,
+                                        placeholder = { Text("Notes", fontSize = 12.sp, color = Color.Gray) },
+                                        modifier = Modifier.fillMaxWidth().height(52.dp).verticalScroll(rememberScrollState()),
                                         textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
                                         colors = symptomTextFieldColors
                                     )
@@ -1085,18 +1149,30 @@ fun MedicationScheduleCard(sched: MedicationSchedule, onRemove: (String) -> Unit
 
 // MARK: - Notes summary screen
 
+fun daySymptomsHasContent(s: DaySymptoms): Boolean =
+    s.tremors.isNotBlank() || s.legs.isNotBlank() || s.plumbing.isNotBlank() ||
+    s.neuropathy.isNotBlank() || s.sleep.isNotBlank() || s.diet.isNotBlank() || s.pain.isNotBlank() ||
+    s.tremorsSeverity > 0 || s.legsSeverity > 0 || s.plumbingSeverity > 0 ||
+    s.neuropathySeverity > 0 || s.sleepSeverity > 0 || s.dietSeverity > 0 || s.painSeverity > 0
+
 @Composable
-fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSchedules: List<MedicationSchedule>) {
+fun NotesSummaryScreen(
+    dayStatuses: MutableMap<String, DayStatus>,
+    daySymptoms: Map<String, DaySymptoms>
+) {
     var showRead by remember { mutableStateOf(false) }
     var showBadDaysOnly by remember { mutableStateOf(false) }
 
-    val filteredNotes = dayStatuses.filter {
-        it.value.note.isNotBlank() &&
-        (showRead || !it.value.isRead) &&
-        (!showBadDaysOnly || it.value.rating == DayRating.BAD)
-    }
-    .toList()
-    .sortedByDescending { it.first }
+    val relevantDates = (dayStatuses.filterValues { it.note.isNotBlank() || it.exercise.isNotBlank() }.keys +
+        daySymptoms.filterValues { daySymptomsHasContent(it) }.keys).toSet()
+
+    val filteredNotes = relevantDates
+        .map { date -> date to (dayStatuses[date] ?: DayStatus()) }
+        .filter { (_, status) ->
+            (showRead || !status.isRead) &&
+            (!showBadDaysOnly || status.rating == DayRating.BAD)
+        }
+        .sortedByDescending { it.first }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
@@ -1116,9 +1192,9 @@ fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSch
                     text = "Mark All Read",
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable {
-                        dayStatuses.forEach { (date, status) ->
-                            if (status.note.isNotBlank() && !status.isRead)
-                                dayStatuses[date] = status.copy(isRead = true)
+                        relevantDates.forEach { date ->
+                            val status = dayStatuses[date] ?: DayStatus()
+                            if (!status.isRead) dayStatuses[date] = status.copy(isRead = true)
                         }
                     }
                 )
@@ -1152,7 +1228,7 @@ fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSch
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 filteredNotes.forEach { (date, status) ->
-                    val meds = schedulesForDate(medicationSchedules, date)
+                    val symptoms = daySymptoms[date] ?: DaySymptoms()
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -1177,10 +1253,6 @@ fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSch
                                     fontSize = 18.sp,
                                     modifier = Modifier.alpha(if (status.isRead) 0.5f else 1f)
                                 )
-                                if (status.takenDay || status.takenAfternoon || status.takenNight) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("✔ Meds", color = if (status.isRead) Color.Gray else Color.Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
                                 Spacer(modifier = Modifier.weight(1f))
                                 Text(
                                     text = if (status.isRead) "Unarchive" else "Mark Read",
@@ -1192,32 +1264,54 @@ fun NotesSummaryScreen(dayStatuses: MutableMap<String, DayStatus>, medicationSch
                                 )
                             }
 
-                            if (meds.isNotEmpty()) {
-                                Column(modifier = Modifier.padding(top = 4.dp)) {
-                                    meds.forEach { med ->
-                                        if (med.name.isNotBlank()) {
-                                            val detail = listOfNotNull(
-                                                med.dose.ifBlank { null },
-                                                med.timing.ifBlank { null },
-                                                med.purpose.ifBlank { null }?.let { "($it)" }
-                                            ).joinToString(" ")
+                            if (status.note.isNotBlank()) {
+                                Text(
+                                    text = status.note,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (status.isRead) Color.Gray else Color.Black,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                            }
+
+                            if (status.exercise.isNotBlank()) {
+                                Text(
+                                    text = "• Exercise: ${status.exercise}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (status.isRead) Color.Gray else Color.DarkGray,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+
+                            if (daySymptomsHasContent(symptoms)) {
+                                Column(modifier = Modifier.padding(top = 8.dp)) {
+                                    Text(
+                                        text = "Symptoms",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (status.isRead) Color.Gray else Color.Black
+                                    )
+                                    listOf(
+                                        Triple("Pain", symptoms.pain, symptoms.painSeverity),
+                                        Triple("Tremors", symptoms.tremors, symptoms.tremorsSeverity),
+                                        Triple("Legs", symptoms.legs, symptoms.legsSeverity),
+                                        Triple("Plumbing", symptoms.plumbing, symptoms.plumbingSeverity),
+                                        Triple("Neuropathy", symptoms.neuropathy, symptoms.neuropathySeverity),
+                                        Triple("Sleep", symptoms.sleep, symptoms.sleepSeverity),
+                                        Triple("Diet", symptoms.diet, symptoms.dietSeverity)
+                                    ).forEach { (label, value, severity) ->
+                                        if (value.isNotBlank() || severity > 0) {
+                                            val severityText = if (severity > 0) " (${severityDisplay(severity)})" else ""
+                                            val valueText = if (value.isNotBlank()) ": $value" else ""
                                             Text(
-                                                text = "• ${med.name}${if (detail.isNotBlank()) ": $detail" else ""}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = Color.Gray,
-                                                modifier = Modifier.alpha(if (status.isRead) 0.5f else 1f)
+                                                text = "• $label$severityText$valueText",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (status.isRead) Color.Gray else Color.DarkGray,
+                                                modifier = Modifier.padding(top = 2.dp)
                                             )
                                         }
                                     }
                                 }
                             }
-
-                            Text(
-                                text = status.note,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (status.isRead) Color.Gray else Color.Black,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
                         }
                     }
                 }
@@ -1356,13 +1450,6 @@ fun CalendarView(
                                             DayRating.GOOD -> "😊"; DayRating.NORMAL -> "😐"; DayRating.BAD -> "🙁"
                                         },
                                         fontSize = 14.sp
-                                    )
-                                    val anyTaken = status.takenDay || status.takenAfternoon || status.takenNight
-                                    Text(
-                                        text = if (anyTaken) "✔" else "○",
-                                        color = if (anyTaken) Color.Green else Color.Gray,
-                                        fontSize = 9.sp,
-                                        fontWeight = if (anyTaken) FontWeight.Bold else FontWeight.Normal
                                     )
                                     val dayAppts = appointmentsForDate(appointments, dayKey)
                                     if (dayAppts.isNotEmpty()) {
@@ -1765,10 +1852,7 @@ fun AppointmentForm(
 @Composable
 fun SymptomsScreen(daySymptoms: Map<String, DaySymptoms>) {
     val entries = daySymptoms
-        .filter { (_, s) ->
-            s.tremors.isNotBlank() || s.legs.isNotBlank() || s.plumbing.isNotBlank() ||
-            s.neuropathy.isNotBlank() || s.sleep.isNotBlank() || s.diet.isNotBlank()
-        }
+        .filter { (_, s) -> daySymptomsHasContent(s) }
         .toList()
         .sortedByDescending { it.first }
 
@@ -1794,19 +1878,20 @@ fun SymptomsScreen(daySymptoms: Map<String, DaySymptoms>) {
                         Text(date, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         listOf(
-                            "Tremors" to s.tremors,
-                            "Legs" to s.legs,
-                            "Plumbing" to s.plumbing,
-                            "Neuropathy" to s.neuropathy,
-                            "Sleep" to s.sleep,
-                            "Diet" to s.diet
-                        ).filter { it.second.isNotBlank() }.forEach { (label, value) ->
+                            Triple("Pain", s.pain, s.painSeverity),
+                            Triple("Tremors", s.tremors, s.tremorsSeverity),
+                            Triple("Legs", s.legs, s.legsSeverity),
+                            Triple("Plumbing", s.plumbing, s.plumbingSeverity),
+                            Triple("Neuropathy", s.neuropathy, s.neuropathySeverity),
+                            Triple("Sleep", s.sleep, s.sleepSeverity),
+                            Triple("Diet", s.diet, s.dietSeverity)
+                        ).filter { it.second.isNotBlank() || it.third > 0 }.forEach { (label, value, severity) ->
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    text = "$label: ",
+                                    text = if (severity > 0) "$label (${severityDisplay(severity)}): " else "$label: ",
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = if (severity > 0) severityColor(severity) else MaterialTheme.colorScheme.primary
                                 )
                                 Text(value, fontSize = 13.sp, color = Color.Black)
                             }
@@ -1814,6 +1899,191 @@ fun SymptomsScreen(daySymptoms: Map<String, DaySymptoms>) {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Symptom trends screen
+
+private val trendSymptomFields: List<Pair<String, (DaySymptoms) -> Int>> = listOf(
+    "Pain" to { it.painSeverity },
+    "Tremors" to { it.tremorsSeverity },
+    "Legs" to { it.legsSeverity },
+    "Plumbing" to { it.plumbingSeverity },
+    "Neuropathy" to { it.neuropathySeverity },
+    "Sleep" to { it.sleepSeverity },
+    "Diet" to { it.dietSeverity }
+)
+
+@Composable
+fun SymptomTrendsScreen(daySymptoms: Map<String, DaySymptoms>) {
+    var selectedSymptom by remember { mutableStateOf(trendSymptomFields.first().first) }
+    var selectedRange by remember { mutableStateOf(TrendRange.WEEK) }
+
+    val sdf = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+    val todayKey = remember { sdf.format(Calendar.getInstance().time) }
+    val cutoffKey = remember(selectedRange) {
+        val cal = Calendar.getInstance()
+        cal.add(Calendar.DAY_OF_YEAR, -selectedRange.days)
+        sdf.format(cal.time)
+    }
+
+    val extractor = trendSymptomFields.first { it.first == selectedSymptom }.second
+    val points = remember(daySymptoms.toMap(), selectedSymptom, cutoffKey, todayKey) {
+        daySymptoms
+            .mapNotNull { (date, s) ->
+                val severity = extractor(s)
+                if (date in cutoffKey..todayKey && severity > 0) date to severity else null
+            }
+            .sortedBy { it.first }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text("Symptom Trends", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TrendRange.values().forEach { range ->
+                val selected = range == selectedRange
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray,
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .clickable { selectedRange = range }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = range.label,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (selected) Color.White else Color.DarkGray
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            trendSymptomFields.forEach { (label, _) ->
+                val selected = label == selectedSymptom
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray,
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .clickable { selectedSymptom = label }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(label, fontSize = 12.sp, color = Color.Black)
+                }
+            }
+        }
+
+        if (points.isEmpty()) {
+            Text(
+                text = "No $selectedSymptom ratings recorded in this range.",
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 24.dp)
+            )
+        } else {
+            SymptomLineChart(
+                points = points,
+                rangeStartKey = cutoffKey,
+                rangeEndKey = todayKey,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+fun SymptomLineChart(
+    points: List<Pair<String, Int>>,
+    rangeStartKey: String,
+    rangeEndKey: String,
+    modifier: Modifier = Modifier
+) {
+    val sdf = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+    val displayFormat = remember { SimpleDateFormat("MMM d", Locale.getDefault()) }
+    val startMillis = remember(rangeStartKey) { sdf.parse(rangeStartKey)?.time ?: 0L }
+    val endMillis = remember(rangeEndKey) { (sdf.parse(rangeEndKey)?.time ?: 1L).coerceAtLeast(startMillis + 1L) }
+    val totalSpan = (endMillis - startMillis).toFloat()
+    val lineColor = MaterialTheme.colorScheme.primary
+    val gridColor = Color.LightGray.copy(alpha = 0.5f)
+
+    Column(modifier = modifier) {
+        Row(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+            Column(
+                modifier = Modifier.fillMaxHeight().width(64.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("5 - Terrible", fontSize = 10.sp, color = severityColor(5))
+                Text("4", fontSize = 10.sp, color = severityColor(4))
+                Text("3 - Fine", fontSize = 10.sp, color = severityColor(3))
+                Text("2", fontSize = 10.sp, color = severityColor(2))
+                Text("1 - Great", fontSize = 10.sp, color = severityColor(1))
+            }
+            Canvas(modifier = Modifier.fillMaxHeight().weight(1f)) {
+                val w = size.width
+                val h = size.height
+                val stepY = h / 4f
+                fun yFor(level: Int) = h - (level - 1) * stepY
+                fun xFor(dateKey: String): Float {
+                    val millis = sdf.parse(dateKey)?.time ?: startMillis
+                    val frac = ((millis - startMillis) / totalSpan).coerceIn(0f, 1f)
+                    return frac * w
+                }
+
+                listOf(1, 3, 5).forEach { level ->
+                    drawLine(
+                        color = gridColor,
+                        start = Offset(0f, yFor(level)),
+                        end = Offset(w, yFor(level)),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+
+                val offsets = points.map { (date, severity) -> Offset(xFor(date), yFor(severity)) }
+                for (i in 0 until offsets.size - 1) {
+                    drawLine(
+                        color = lineColor,
+                        start = offsets[i],
+                        end = offsets[i + 1],
+                        strokeWidth = 3.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                }
+                offsets.forEachIndexed { idx, offset ->
+                    drawCircle(color = severityColor(points[idx].second), radius = 5.dp.toPx(), center = offset)
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 64.dp, top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(displayFormat.format(Date(startMillis)), fontSize = 10.sp, color = Color.Gray)
+            Text(displayFormat.format(Date(endMillis)), fontSize = 10.sp, color = Color.Gray)
         }
     }
 }
@@ -2098,6 +2368,61 @@ fun RatingOption(icon: String, selected: Boolean, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(icon, fontSize = 18.sp)
+    }
+}
+
+// 1 = mildest (green) ... 5 = worst (red)
+fun severityColor(level: Int): Color = when (level) {
+    1 -> Color(0xFF4CAF50)
+    2 -> Color(0xFF8BC34A)
+    3 -> Color(0xFFFFC107)
+    4 -> Color(0xFFFF9800)
+    5 -> Color(0xFFF44336)
+    else -> Color.LightGray
+}
+
+private val severityLabels = mapOf(1 to "Great", 3 to "Fine", 5 to "Terrible")
+
+fun severityDisplay(level: Int): String =
+    severityLabels[level]?.let { "$level/5 - $it" } ?: "$level/5"
+
+@Composable
+fun SeverityRating(value: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text("Severity:", fontSize = 11.sp, color = Color.DarkGray)
+        Row(modifier = Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (level in 1..5) {
+                val selected = value == level
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(
+                                if (selected) severityColor(level) else Color.Transparent,
+                                shape = MaterialTheme.shapes.small
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (selected) severityColor(level) else Color.LightGray,
+                                shape = MaterialTheme.shapes.small
+                            )
+                            .clickable { onChange(if (selected) 0 else level) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = level.toString(),
+                            fontSize = 12.sp,
+                            color = if (selected) Color.White else Color.DarkGray
+                        )
+                    }
+                    Text(
+                        text = severityLabels[level] ?: "",
+                        fontSize = 8.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
     }
 }
 
