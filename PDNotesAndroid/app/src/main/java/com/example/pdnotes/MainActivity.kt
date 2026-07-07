@@ -73,12 +73,19 @@ data class DayStatus(
 
 data class DaySymptoms(
     val tremors: String = "",
+    val tremorsSeverity: Int = 0,
     val legs: String = "",
+    val legsSeverity: Int = 0,
     val plumbing: String = "",
+    val plumbingSeverity: Int = 0,
     val neuropathy: String = "",
+    val neuropathySeverity: Int = 0,
     val sleep: String = "",
+    val sleepSeverity: Int = 0,
     val diet: String = "",
-    val pain: String = ""
+    val dietSeverity: Int = 0,
+    val pain: String = "",
+    val painSeverity: Int = 0
 )
 
 data class Appointment(
@@ -219,12 +226,19 @@ fun PDNotesApp() {
                     val obj = json.getJSONObject(key)
                     initialMap[key] = DaySymptoms(
                         tremors = obj.optString("tremors"),
+                        tremorsSeverity = obj.optInt("tremorsSeverity"),
                         legs = obj.optString("legs"),
+                        legsSeverity = obj.optInt("legsSeverity"),
                         plumbing = obj.optString("plumbing"),
+                        plumbingSeverity = obj.optInt("plumbingSeverity"),
                         neuropathy = obj.optString("neuropathy"),
+                        neuropathySeverity = obj.optInt("neuropathySeverity"),
                         sleep = obj.optString("sleep"),
+                        sleepSeverity = obj.optInt("sleepSeverity"),
                         diet = obj.optString("diet"),
-                        pain = obj.optString("pain")
+                        dietSeverity = obj.optInt("dietSeverity"),
+                        pain = obj.optString("pain"),
+                        painSeverity = obj.optInt("painSeverity")
                     )
                 }
             } catch (e: Exception) { Log.e(TAG, "Failed to load day symptoms", e) }
@@ -237,12 +251,19 @@ fun PDNotesApp() {
         daySymptoms.forEach { (date, s) ->
             val obj = JSONObject()
             obj.put("tremors", s.tremors)
+            obj.put("tremorsSeverity", s.tremorsSeverity)
             obj.put("legs", s.legs)
+            obj.put("legsSeverity", s.legsSeverity)
             obj.put("plumbing", s.plumbing)
+            obj.put("plumbingSeverity", s.plumbingSeverity)
             obj.put("neuropathy", s.neuropathy)
+            obj.put("neuropathySeverity", s.neuropathySeverity)
             obj.put("sleep", s.sleep)
+            obj.put("sleepSeverity", s.sleepSeverity)
             obj.put("diet", s.diet)
+            obj.put("dietSeverity", s.dietSeverity)
             obj.put("pain", s.pain)
+            obj.put("painSeverity", s.painSeverity)
             json.put(date, obj)
         }
         sharedPrefs.edit { putString("day_symptoms", json.toString()) }
@@ -682,25 +703,25 @@ fun TrackerScreen(
                                 HorizontalDivider(modifier = Modifier.padding(top = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
                                 Text("Symptoms", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.Black, modifier = Modifier.padding(top = 4.dp))
                                 listOf(
+                                    "Pain" to symptoms.pain,
                                     "Tremors" to symptoms.tremors,
                                     "Legs" to symptoms.legs,
                                     "Plumbing" to symptoms.plumbing,
                                     "Neuropathy" to symptoms.neuropathy,
                                     "Sleep" to symptoms.sleep,
-                                    "Diet" to symptoms.diet,
-                                    "Pain" to symptoms.pain
+                                    "Diet" to symptoms.diet
                                 ).forEach { (label, value) ->
                                     TextField(
                                         value = value,
                                         onValueChange = { newVal ->
                                             val updated = when (label) {
+                                                "Pain" -> symptoms.copy(pain = newVal)
                                                 "Tremors" -> symptoms.copy(tremors = newVal)
                                                 "Legs" -> symptoms.copy(legs = newVal)
                                                 "Plumbing" -> symptoms.copy(plumbing = newVal)
                                                 "Neuropathy" -> symptoms.copy(neuropathy = newVal)
                                                 "Sleep" -> symptoms.copy(sleep = newVal)
-                                                "Diet" -> symptoms.copy(diet = newVal)
-                                                else -> symptoms.copy(pain = newVal)
+                                                else -> symptoms.copy(diet = newVal)
                                             }
                                             daySymptoms[dayKey] = updated
                                         },
@@ -709,6 +730,31 @@ fun TrackerScreen(
                                         minLines = 2,
                                         textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
                                         colors = symptomTextFieldColors
+                                    )
+                                    val severity = when (label) {
+                                        "Pain" -> symptoms.painSeverity
+                                        "Tremors" -> symptoms.tremorsSeverity
+                                        "Legs" -> symptoms.legsSeverity
+                                        "Plumbing" -> symptoms.plumbingSeverity
+                                        "Neuropathy" -> symptoms.neuropathySeverity
+                                        "Sleep" -> symptoms.sleepSeverity
+                                        else -> symptoms.dietSeverity
+                                    }
+                                    SeverityRating(
+                                        value = severity,
+                                        onChange = { newSeverity ->
+                                            val updated = when (label) {
+                                                "Pain" -> symptoms.copy(painSeverity = newSeverity)
+                                                "Tremors" -> symptoms.copy(tremorsSeverity = newSeverity)
+                                                "Legs" -> symptoms.copy(legsSeverity = newSeverity)
+                                                "Plumbing" -> symptoms.copy(plumbingSeverity = newSeverity)
+                                                "Neuropathy" -> symptoms.copy(neuropathySeverity = newSeverity)
+                                                "Sleep" -> symptoms.copy(sleepSeverity = newSeverity)
+                                                else -> symptoms.copy(dietSeverity = newSeverity)
+                                            }
+                                            daySymptoms[dayKey] = updated
+                                        },
+                                        modifier = Modifier.padding(bottom = 4.dp)
                                     )
                                 }
                             }
@@ -1092,7 +1138,9 @@ fun MedicationScheduleCard(sched: MedicationSchedule, onRemove: (String) -> Unit
 
 fun daySymptomsHasContent(s: DaySymptoms): Boolean =
     s.tremors.isNotBlank() || s.legs.isNotBlank() || s.plumbing.isNotBlank() ||
-    s.neuropathy.isNotBlank() || s.sleep.isNotBlank() || s.diet.isNotBlank() || s.pain.isNotBlank()
+    s.neuropathy.isNotBlank() || s.sleep.isNotBlank() || s.diet.isNotBlank() || s.pain.isNotBlank() ||
+    s.tremorsSeverity > 0 || s.legsSeverity > 0 || s.plumbingSeverity > 0 ||
+    s.neuropathySeverity > 0 || s.sleepSeverity > 0 || s.dietSeverity > 0 || s.painSeverity > 0
 
 @Composable
 fun NotesSummaryScreen(
@@ -1230,17 +1278,19 @@ fun NotesSummaryScreen(
                                         color = if (status.isRead) Color.Gray else Color.Black
                                     )
                                     listOf(
-                                        "Tremors" to symptoms.tremors,
-                                        "Legs" to symptoms.legs,
-                                        "Plumbing" to symptoms.plumbing,
-                                        "Neuropathy" to symptoms.neuropathy,
-                                        "Sleep" to symptoms.sleep,
-                                        "Diet" to symptoms.diet,
-                                        "Pain" to symptoms.pain
-                                    ).forEach { (label, value) ->
-                                        if (value.isNotBlank()) {
+                                        Triple("Pain", symptoms.pain, symptoms.painSeverity),
+                                        Triple("Tremors", symptoms.tremors, symptoms.tremorsSeverity),
+                                        Triple("Legs", symptoms.legs, symptoms.legsSeverity),
+                                        Triple("Plumbing", symptoms.plumbing, symptoms.plumbingSeverity),
+                                        Triple("Neuropathy", symptoms.neuropathy, symptoms.neuropathySeverity),
+                                        Triple("Sleep", symptoms.sleep, symptoms.sleepSeverity),
+                                        Triple("Diet", symptoms.diet, symptoms.dietSeverity)
+                                    ).forEach { (label, value, severity) ->
+                                        if (value.isNotBlank() || severity > 0) {
+                                            val severityText = if (severity > 0) " (${severityDisplay(severity)})" else ""
+                                            val valueText = if (value.isNotBlank()) ": $value" else ""
                                             Text(
-                                                text = "• $label: $value",
+                                                text = "• $label$severityText$valueText",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = if (status.isRead) Color.Gray else Color.DarkGray,
                                                 modifier = Modifier.padding(top = 2.dp)
@@ -1789,10 +1839,7 @@ fun AppointmentForm(
 @Composable
 fun SymptomsScreen(daySymptoms: Map<String, DaySymptoms>) {
     val entries = daySymptoms
-        .filter { (_, s) ->
-            s.tremors.isNotBlank() || s.legs.isNotBlank() || s.plumbing.isNotBlank() ||
-            s.neuropathy.isNotBlank() || s.sleep.isNotBlank() || s.diet.isNotBlank() || s.pain.isNotBlank()
-        }
+        .filter { (_, s) -> daySymptomsHasContent(s) }
         .toList()
         .sortedByDescending { it.first }
 
@@ -1818,20 +1865,20 @@ fun SymptomsScreen(daySymptoms: Map<String, DaySymptoms>) {
                         Text(date, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         listOf(
-                            "Tremors" to s.tremors,
-                            "Legs" to s.legs,
-                            "Plumbing" to s.plumbing,
-                            "Neuropathy" to s.neuropathy,
-                            "Sleep" to s.sleep,
-                            "Diet" to s.diet,
-                            "Pain" to s.pain
-                        ).filter { it.second.isNotBlank() }.forEach { (label, value) ->
+                            Triple("Pain", s.pain, s.painSeverity),
+                            Triple("Tremors", s.tremors, s.tremorsSeverity),
+                            Triple("Legs", s.legs, s.legsSeverity),
+                            Triple("Plumbing", s.plumbing, s.plumbingSeverity),
+                            Triple("Neuropathy", s.neuropathy, s.neuropathySeverity),
+                            Triple("Sleep", s.sleep, s.sleepSeverity),
+                            Triple("Diet", s.diet, s.dietSeverity)
+                        ).filter { it.second.isNotBlank() || it.third > 0 }.forEach { (label, value, severity) ->
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    text = "$label: ",
+                                    text = if (severity > 0) "$label (${severityDisplay(severity)}): " else "$label: ",
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = if (severity > 0) severityColor(severity) else MaterialTheme.colorScheme.primary
                                 )
                                 Text(value, fontSize = 13.sp, color = Color.Black)
                             }
@@ -2123,6 +2170,61 @@ fun RatingOption(icon: String, selected: Boolean, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(icon, fontSize = 18.sp)
+    }
+}
+
+// 1 = mildest (green) ... 5 = worst (red)
+fun severityColor(level: Int): Color = when (level) {
+    1 -> Color(0xFF4CAF50)
+    2 -> Color(0xFF8BC34A)
+    3 -> Color(0xFFFFC107)
+    4 -> Color(0xFFFF9800)
+    5 -> Color(0xFFF44336)
+    else -> Color.LightGray
+}
+
+private val severityLabels = mapOf(1 to "Great", 3 to "Nothing", 5 to "Terrible")
+
+fun severityDisplay(level: Int): String =
+    severityLabels[level]?.let { "$level/5 - $it" } ?: "$level/5"
+
+@Composable
+fun SeverityRating(value: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text("Severity:", fontSize = 11.sp, color = Color.DarkGray)
+        Row(modifier = Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (level in 1..5) {
+                val selected = value == level
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(
+                                if (selected) severityColor(level) else Color.Transparent,
+                                shape = MaterialTheme.shapes.small
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (selected) severityColor(level) else Color.LightGray,
+                                shape = MaterialTheme.shapes.small
+                            )
+                            .clickable { onChange(if (selected) 0 else level) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = level.toString(),
+                            fontSize = 12.sp,
+                            color = if (selected) Color.White else Color.DarkGray
+                        )
+                    }
+                    Text(
+                        text = severityLabels[level] ?: "",
+                        fontSize = 8.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
     }
 }
 
