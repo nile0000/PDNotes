@@ -5,9 +5,11 @@ package com.weinman.pdnotes
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.*
@@ -19,7 +21,9 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,6 +54,13 @@ private const val TAG = "PDNotes"
 // MARK: - Data models
 
 enum class DayRating { GOOD, NORMAL, BAD }
+
+enum class TrendRange(val label: String, val days: Int) {
+    WEEK("1W", 7),
+    MONTH("1M", 30),
+    THREE_MONTHS("3M", 90),
+    SIX_MONTHS("6M", 180)
+}
 
 data class MedicationSchedule(
     val id: String = UUID.randomUUID().toString(),
@@ -403,6 +414,7 @@ fun PDNotesApp() {
         "meds" to "Meds",
         "notes" to "All Notes",
         "symptoms" to "Symptoms",
+        "trends" to "Trends",
         "contacts" to "Contacts"
     )
     var navExpanded by remember { mutableStateOf(false) }
@@ -471,6 +483,7 @@ fun PDNotesApp() {
                 onShowAppointments = { appointmentForDate = it }
             )
             "symptoms" -> SymptomsScreen(daySymptoms = daySymptoms)
+            "trends" -> SymptomTrendsScreen(daySymptoms = daySymptoms)
             "meds" -> MedicationsScreen(
                 schedules = medicationSchedules,
                 onAdd = { medicationSchedules.add(it) },
@@ -711,26 +724,6 @@ fun TrackerScreen(
                                     "Sleep" to symptoms.sleep,
                                     "Diet" to symptoms.diet
                                 ).forEach { (label, value) ->
-                                    TextField(
-                                        value = value,
-                                        onValueChange = { newVal ->
-                                            val updated = when (label) {
-                                                "Pain" -> symptoms.copy(pain = newVal)
-                                                "Tremors" -> symptoms.copy(tremors = newVal)
-                                                "Legs" -> symptoms.copy(legs = newVal)
-                                                "Plumbing" -> symptoms.copy(plumbing = newVal)
-                                                "Neuropathy" -> symptoms.copy(neuropathy = newVal)
-                                                "Sleep" -> symptoms.copy(sleep = newVal)
-                                                else -> symptoms.copy(diet = newVal)
-                                            }
-                                            daySymptoms[dayKey] = updated
-                                        },
-                                        label = { Text(label, fontSize = 12.sp) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        minLines = 2,
-                                        textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
-                                        colors = symptomTextFieldColors
-                                    )
                                     val severity = when (label) {
                                         "Pain" -> symptoms.painSeverity
                                         "Tremors" -> symptoms.tremorsSeverity
@@ -740,6 +733,7 @@ fun TrackerScreen(
                                         "Sleep" -> symptoms.sleepSeverity
                                         else -> symptoms.dietSeverity
                                     }
+                                    Text(label, fontSize = 12.sp, color = Color.Black, modifier = Modifier.padding(top = 8.dp))
                                     SeverityRating(
                                         value = severity,
                                         onChange = { newSeverity ->
@@ -754,7 +748,26 @@ fun TrackerScreen(
                                             }
                                             daySymptoms[dayKey] = updated
                                         },
-                                        modifier = Modifier.padding(bottom = 4.dp)
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                    TextField(
+                                        value = value,
+                                        onValueChange = { newVal ->
+                                            val updated = when (label) {
+                                                "Pain" -> symptoms.copy(pain = newVal)
+                                                "Tremors" -> symptoms.copy(tremors = newVal)
+                                                "Legs" -> symptoms.copy(legs = newVal)
+                                                "Plumbing" -> symptoms.copy(plumbing = newVal)
+                                                "Neuropathy" -> symptoms.copy(neuropathy = newVal)
+                                                "Sleep" -> symptoms.copy(sleep = newVal)
+                                                else -> symptoms.copy(diet = newVal)
+                                            }
+                                            daySymptoms[dayKey] = updated
+                                        },
+                                        placeholder = { Text("Notes", fontSize = 12.sp, color = Color.Gray) },
+                                        modifier = Modifier.fillMaxWidth().height(52.dp).verticalScroll(rememberScrollState()),
+                                        textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
+                                        colors = symptomTextFieldColors
                                     )
                                 }
                             }
@@ -1890,6 +1903,191 @@ fun SymptomsScreen(daySymptoms: Map<String, DaySymptoms>) {
     }
 }
 
+// MARK: - Symptom trends screen
+
+private val trendSymptomFields: List<Pair<String, (DaySymptoms) -> Int>> = listOf(
+    "Pain" to { it.painSeverity },
+    "Tremors" to { it.tremorsSeverity },
+    "Legs" to { it.legsSeverity },
+    "Plumbing" to { it.plumbingSeverity },
+    "Neuropathy" to { it.neuropathySeverity },
+    "Sleep" to { it.sleepSeverity },
+    "Diet" to { it.dietSeverity }
+)
+
+@Composable
+fun SymptomTrendsScreen(daySymptoms: Map<String, DaySymptoms>) {
+    var selectedSymptom by remember { mutableStateOf(trendSymptomFields.first().first) }
+    var selectedRange by remember { mutableStateOf(TrendRange.WEEK) }
+
+    val sdf = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+    val todayKey = remember { sdf.format(Calendar.getInstance().time) }
+    val cutoffKey = remember(selectedRange) {
+        val cal = Calendar.getInstance()
+        cal.add(Calendar.DAY_OF_YEAR, -selectedRange.days)
+        sdf.format(cal.time)
+    }
+
+    val extractor = trendSymptomFields.first { it.first == selectedSymptom }.second
+    val points = remember(daySymptoms.toMap(), selectedSymptom, cutoffKey, todayKey) {
+        daySymptoms
+            .mapNotNull { (date, s) ->
+                val severity = extractor(s)
+                if (date in cutoffKey..todayKey && severity > 0) date to severity else null
+            }
+            .sortedBy { it.first }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text("Symptom Trends", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TrendRange.values().forEach { range ->
+                val selected = range == selectedRange
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray,
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .clickable { selectedRange = range }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = range.label,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (selected) Color.White else Color.DarkGray
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            trendSymptomFields.forEach { (label, _) ->
+                val selected = label == selectedSymptom
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray,
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .clickable { selectedSymptom = label }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(label, fontSize = 12.sp, color = Color.Black)
+                }
+            }
+        }
+
+        if (points.isEmpty()) {
+            Text(
+                text = "No $selectedSymptom ratings recorded in this range.",
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 24.dp)
+            )
+        } else {
+            SymptomLineChart(
+                points = points,
+                rangeStartKey = cutoffKey,
+                rangeEndKey = todayKey,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+fun SymptomLineChart(
+    points: List<Pair<String, Int>>,
+    rangeStartKey: String,
+    rangeEndKey: String,
+    modifier: Modifier = Modifier
+) {
+    val sdf = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+    val displayFormat = remember { SimpleDateFormat("MMM d", Locale.getDefault()) }
+    val startMillis = remember(rangeStartKey) { sdf.parse(rangeStartKey)?.time ?: 0L }
+    val endMillis = remember(rangeEndKey) { (sdf.parse(rangeEndKey)?.time ?: 1L).coerceAtLeast(startMillis + 1L) }
+    val totalSpan = (endMillis - startMillis).toFloat()
+    val lineColor = MaterialTheme.colorScheme.primary
+    val gridColor = Color.LightGray.copy(alpha = 0.5f)
+
+    Column(modifier = modifier) {
+        Row(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+            Column(
+                modifier = Modifier.fillMaxHeight().width(64.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("5 - Terrible", fontSize = 10.sp, color = severityColor(5))
+                Text("4", fontSize = 10.sp, color = severityColor(4))
+                Text("3 - Fine", fontSize = 10.sp, color = severityColor(3))
+                Text("2", fontSize = 10.sp, color = severityColor(2))
+                Text("1 - Great", fontSize = 10.sp, color = severityColor(1))
+            }
+            Canvas(modifier = Modifier.fillMaxHeight().weight(1f)) {
+                val w = size.width
+                val h = size.height
+                val stepY = h / 4f
+                fun yFor(level: Int) = h - (level - 1) * stepY
+                fun xFor(dateKey: String): Float {
+                    val millis = sdf.parse(dateKey)?.time ?: startMillis
+                    val frac = ((millis - startMillis) / totalSpan).coerceIn(0f, 1f)
+                    return frac * w
+                }
+
+                listOf(1, 3, 5).forEach { level ->
+                    drawLine(
+                        color = gridColor,
+                        start = Offset(0f, yFor(level)),
+                        end = Offset(w, yFor(level)),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+
+                val offsets = points.map { (date, severity) -> Offset(xFor(date), yFor(severity)) }
+                for (i in 0 until offsets.size - 1) {
+                    drawLine(
+                        color = lineColor,
+                        start = offsets[i],
+                        end = offsets[i + 1],
+                        strokeWidth = 3.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                }
+                offsets.forEachIndexed { idx, offset ->
+                    drawCircle(color = severityColor(points[idx].second), radius = 5.dp.toPx(), center = offset)
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 64.dp, top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(displayFormat.format(Date(startMillis)), fontSize = 10.sp, color = Color.Gray)
+            Text(displayFormat.format(Date(endMillis)), fontSize = 10.sp, color = Color.Gray)
+        }
+    }
+}
+
 // MARK: - Contacts screen
 
 @Composable
@@ -2183,7 +2381,7 @@ fun severityColor(level: Int): Color = when (level) {
     else -> Color.LightGray
 }
 
-private val severityLabels = mapOf(1 to "Great", 3 to "Nothing", 5 to "Terrible")
+private val severityLabels = mapOf(1 to "Great", 3 to "Fine", 5 to "Terrible")
 
 fun severityDisplay(level: Int): String =
     severityLabels[level]?.let { "$level/5 - $it" } ?: "$level/5"
