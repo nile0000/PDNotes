@@ -101,13 +101,13 @@ private struct NoteCard: View {
                         .font(.caption2)
                         .fontWeight(.semibold)
                         .foregroundStyle(status.isRead ? .secondary : .primary)
-                    symptomLine("Tremors", symptoms.tremors, isRead: status.isRead)
-                    symptomLine("Legs", symptoms.legs, isRead: status.isRead)
-                    symptomLine("Plumbing", symptoms.plumbing, isRead: status.isRead)
-                    symptomLine("Neuropathy", symptoms.neuropathy, isRead: status.isRead)
-                    symptomLine("Sleep", symptoms.sleep, isRead: status.isRead)
-                    symptomLine("Diet", symptoms.diet, isRead: status.isRead)
-                    symptomLine("Pain", symptoms.pain, isRead: status.isRead)
+                    symptomLine("Pain", symptoms.pain, severity: symptoms.painSeverity, isRead: status.isRead)
+                    symptomLine("Tremors", symptoms.tremors, severity: symptoms.tremorsSeverity, isRead: status.isRead)
+                    symptomLine("Legs", symptoms.legs, severity: symptoms.legsSeverity, isRead: status.isRead)
+                    symptomLine("Plumbing", symptoms.plumbing, severity: symptoms.plumbingSeverity, isRead: status.isRead)
+                    symptomLine("Neuropathy", symptoms.neuropathy, severity: symptoms.neuropathySeverity, isRead: status.isRead)
+                    symptomLine("Sleep", symptoms.sleep, severity: symptoms.sleepSeverity, isRead: status.isRead)
+                    symptomLine("Diet", symptoms.diet, severity: symptoms.dietSeverity, isRead: status.isRead)
                 }
                 .padding(.top, 8)
             }
@@ -118,9 +118,11 @@ private struct NoteCard: View {
     }
 
     @ViewBuilder
-    private func symptomLine(_ label: String, _ value: String, isRead: Bool) -> some View {
-        if !value.isEmpty {
-            Text("• \(label): \(value)")
+    private func symptomLine(_ label: String, _ value: String, severity: Int, isRead: Bool) -> some View {
+        if !value.isEmpty || severity > 0 {
+            let severityText = severity > 0 ? " (\(severityDisplay(severity)))" : ""
+            let valueText = value.isEmpty ? "" : ": \(value)"
+            Text("• \(label)\(severityText)\(valueText)")
                 .font(.caption)
                 .foregroundStyle(isRead ? Color.secondary : Color(.darkGray))
                 .padding(.top, 1)

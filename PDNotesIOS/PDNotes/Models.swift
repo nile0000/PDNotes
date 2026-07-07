@@ -44,39 +44,69 @@ struct DayStatus: Codable, Equatable {
 
 struct DaySymptoms: Codable, Equatable {
     var tremors: String = ""
+    var tremorsSeverity: Int = 0
     var legs: String = ""
+    var legsSeverity: Int = 0
     var plumbing: String = ""
+    var plumbingSeverity: Int = 0
     var neuropathy: String = ""
+    var neuropathySeverity: Int = 0
     var sleep: String = ""
+    var sleepSeverity: Int = 0
     var diet: String = ""
+    var dietSeverity: Int = 0
     var pain: String = ""
+    var painSeverity: Int = 0
 
     var hasContent: Bool {
         !tremors.isEmpty || !legs.isEmpty || !plumbing.isEmpty ||
-        !neuropathy.isEmpty || !sleep.isEmpty || !diet.isEmpty || !pain.isEmpty
+        !neuropathy.isEmpty || !sleep.isEmpty || !diet.isEmpty || !pain.isEmpty ||
+        tremorsSeverity > 0 || legsSeverity > 0 || plumbingSeverity > 0 ||
+        neuropathySeverity > 0 || sleepSeverity > 0 || dietSeverity > 0 || painSeverity > 0
     }
 
-    init(tremors: String = "", legs: String = "", plumbing: String = "", neuropathy: String = "", sleep: String = "", diet: String = "", pain: String = "") {
+    init(tremors: String = "", tremorsSeverity: Int = 0,
+         legs: String = "", legsSeverity: Int = 0,
+         plumbing: String = "", plumbingSeverity: Int = 0,
+         neuropathy: String = "", neuropathySeverity: Int = 0,
+         sleep: String = "", sleepSeverity: Int = 0,
+         diet: String = "", dietSeverity: Int = 0,
+         pain: String = "", painSeverity: Int = 0) {
         self.tremors = tremors
+        self.tremorsSeverity = tremorsSeverity
         self.legs = legs
+        self.legsSeverity = legsSeverity
         self.plumbing = plumbing
+        self.plumbingSeverity = plumbingSeverity
         self.neuropathy = neuropathy
+        self.neuropathySeverity = neuropathySeverity
         self.sleep = sleep
+        self.sleepSeverity = sleepSeverity
         self.diet = diet
+        self.dietSeverity = dietSeverity
         self.pain = pain
+        self.painSeverity = painSeverity
     }
 
-    // Custom decoding so existing persisted entries (saved before "pain" existed)
-    // still decode instead of falling back to an empty dictionary.
+    // Custom decoding so existing persisted entries (saved before "pain" and
+    // the severity fields existed) still decode instead of falling back to
+    // an empty dictionary.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         tremors = try container.decodeIfPresent(String.self, forKey: .tremors) ?? ""
+        tremorsSeverity = try container.decodeIfPresent(Int.self, forKey: .tremorsSeverity) ?? 0
         legs = try container.decodeIfPresent(String.self, forKey: .legs) ?? ""
+        legsSeverity = try container.decodeIfPresent(Int.self, forKey: .legsSeverity) ?? 0
         plumbing = try container.decodeIfPresent(String.self, forKey: .plumbing) ?? ""
+        plumbingSeverity = try container.decodeIfPresent(Int.self, forKey: .plumbingSeverity) ?? 0
         neuropathy = try container.decodeIfPresent(String.self, forKey: .neuropathy) ?? ""
+        neuropathySeverity = try container.decodeIfPresent(Int.self, forKey: .neuropathySeverity) ?? 0
         sleep = try container.decodeIfPresent(String.self, forKey: .sleep) ?? ""
+        sleepSeverity = try container.decodeIfPresent(Int.self, forKey: .sleepSeverity) ?? 0
         diet = try container.decodeIfPresent(String.self, forKey: .diet) ?? ""
+        dietSeverity = try container.decodeIfPresent(Int.self, forKey: .dietSeverity) ?? 0
         pain = try container.decodeIfPresent(String.self, forKey: .pain) ?? ""
+        painSeverity = try container.decodeIfPresent(Int.self, forKey: .painSeverity) ?? 0
     }
 }
 

@@ -198,34 +198,27 @@ struct DayCard: View {
                 .font(.caption)
                 .fontWeight(.semibold)
 
-            symptomField("Tremors", value: Binding(
-                get: { symptoms.tremors },
-                set: { newValue in store.updateSymptoms(for: dayKey) { $0.tremors = newValue } }
-            ))
-            symptomField("Legs", value: Binding(
-                get: { symptoms.legs },
-                set: { newValue in store.updateSymptoms(for: dayKey) { $0.legs = newValue } }
-            ))
-            symptomField("Plumbing", value: Binding(
-                get: { symptoms.plumbing },
-                set: { newValue in store.updateSymptoms(for: dayKey) { $0.plumbing = newValue } }
-            ))
-            symptomField("Neuropathy", value: Binding(
-                get: { symptoms.neuropathy },
-                set: { newValue in store.updateSymptoms(for: dayKey) { $0.neuropathy = newValue } }
-            ))
-            symptomField("Sleep", value: Binding(
-                get: { symptoms.sleep },
-                set: { newValue in store.updateSymptoms(for: dayKey) { $0.sleep = newValue } }
-            ))
-            symptomField("Diet", value: Binding(
-                get: { symptoms.diet },
-                set: { newValue in store.updateSymptoms(for: dayKey) { $0.diet = newValue } }
-            ))
-            symptomField("Pain", value: Binding(
-                get: { symptoms.pain },
-                set: { newValue in store.updateSymptoms(for: dayKey) { $0.pain = newValue } }
-            ))
+            symptomSection("Pain",
+                note: Binding(get: { symptoms.pain }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.pain = newValue } }),
+                severity: Binding(get: { symptoms.painSeverity }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.painSeverity = newValue } }))
+            symptomSection("Tremors",
+                note: Binding(get: { symptoms.tremors }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.tremors = newValue } }),
+                severity: Binding(get: { symptoms.tremorsSeverity }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.tremorsSeverity = newValue } }))
+            symptomSection("Legs",
+                note: Binding(get: { symptoms.legs }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.legs = newValue } }),
+                severity: Binding(get: { symptoms.legsSeverity }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.legsSeverity = newValue } }))
+            symptomSection("Plumbing",
+                note: Binding(get: { symptoms.plumbing }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.plumbing = newValue } }),
+                severity: Binding(get: { symptoms.plumbingSeverity }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.plumbingSeverity = newValue } }))
+            symptomSection("Neuropathy",
+                note: Binding(get: { symptoms.neuropathy }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.neuropathy = newValue } }),
+                severity: Binding(get: { symptoms.neuropathySeverity }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.neuropathySeverity = newValue } }))
+            symptomSection("Sleep",
+                note: Binding(get: { symptoms.sleep }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.sleep = newValue } }),
+                severity: Binding(get: { symptoms.sleepSeverity }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.sleepSeverity = newValue } }))
+            symptomSection("Diet",
+                note: Binding(get: { symptoms.diet }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.diet = newValue } }),
+                severity: Binding(get: { symptoms.dietSeverity }, set: { newValue in store.updateSymptoms(for: dayKey) { $0.dietSeverity = newValue } }))
         }
         .padding(12)
         .background(Color(.secondarySystemBackground))
@@ -237,6 +230,16 @@ struct DayCard: View {
             Text(label).font(.caption2).foregroundStyle(.secondary)
             TextField("", text: value, axis: .vertical)
                 .lineLimit(2...)
+                .font(.caption)
+        }
+    }
+
+    private func symptomSection(_ label: String, note: Binding<String>, severity: Binding<Int>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.caption).padding(.top, 6)
+            SeverityRatingView(value: severity.wrappedValue, onChange: { severity.wrappedValue = $0 })
+            TextField("Notes", text: note, axis: .vertical)
+                .lineLimit(1...3)
                 .font(.caption)
         }
     }
