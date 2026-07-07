@@ -25,6 +25,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.res.Configuration
@@ -2381,7 +2382,7 @@ fun severityColor(level: Int): Color = when (level) {
     else -> Color.LightGray
 }
 
-private val severityLabels = mapOf(1 to "Great", 3 to "Fine", 5 to "Terrible")
+private val severityLabels = mapOf(1 to "Great", 2 to "Good", 3 to "Fine", 4 to "Bad", 5 to "Terrible")
 
 fun severityDisplay(level: Int): String =
     severityLabels[level]?.let { "$level/5 - $it" } ?: "$level/5"
@@ -2418,7 +2419,9 @@ fun SeverityRating(value: Int, onChange: (Int) -> Unit, modifier: Modifier = Mod
                     Text(
                         text = severityLabels[level] ?: "",
                         fontSize = 8.sp,
-                        color = Color.Gray
+                        color = Color.Gray,
+                        modifier = Modifier.width(32.dp),
+                        textAlign = TextAlign.Center
                     )
                 }
             }
