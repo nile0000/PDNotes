@@ -1,7 +1,7 @@
 import SwiftUI
 
 // 1 = mildest (green) ... 5 = worst (red)
-let severityLabels: [Int: String] = [1: "Great", 3: "Fine", 5: "Terrible"]
+let severityLabels: [Int: String] = [1: "Great", 2: "Good", 3: "Fine", 4: "Bad", 5: "Terrible"]
 
 func severityColor(_ level: Int) -> Color {
     switch level {
@@ -47,6 +47,7 @@ struct SeverityRatingView: View {
                             Text(severityLabels[level] ?? "")
                                 .font(.system(size: 8))
                                 .foregroundStyle(.secondary)
+                                .frame(width: 34)
                         }
                     }
                     .buttonStyle(.plain)
