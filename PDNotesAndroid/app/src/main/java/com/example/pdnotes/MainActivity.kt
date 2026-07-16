@@ -765,7 +765,7 @@ fun TrackerScreen(
                                             }
                                             daySymptoms[dayKey] = updated
                                         },
-                                        placeholder = { Text("Notes", fontSize = 12.sp, color = Color.Gray) },
+                                        placeholder = { Text("Notes", fontSize = 12.sp, color = Color.DarkGray) },
                                         modifier = Modifier.fillMaxWidth().height(52.dp).verticalScroll(rememberScrollState()),
                                         textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.Black),
                                         colors = symptomTextFieldColors
@@ -860,7 +860,7 @@ fun DayMedicationScreen(
             )
 
             if (daySchedules.isEmpty()) {
-                Text("No medications scheduled for this day.", color = Color.Gray)
+                Text("No medications scheduled for this day.", color = Color.DarkGray)
             } else {
                 daySchedules.forEach { sched ->
                     MedicationScheduleCard(
@@ -1092,15 +1092,15 @@ fun MedicationsScreen(
         }
 
         if (schedules.isEmpty() && !showAddForm) {
-            Text("No medications scheduled yet.", color = Color.Gray)
+            Text("No medications scheduled yet.", color = Color.DarkGray)
         } else {
             if (active.isNotEmpty()) {
-                Text("Active", fontWeight = FontWeight.SemiBold, color = Color.Gray, fontSize = 13.sp)
+                Text("Active", fontWeight = FontWeight.SemiBold, color = Color.DarkGray, fontSize = 13.sp)
                 active.forEach { sched -> MedicationScheduleCard(sched, onRemove, onUpdate) }
             }
             if (past.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Past", fontWeight = FontWeight.SemiBold, color = Color.Gray, fontSize = 13.sp)
+                Text("Past", fontWeight = FontWeight.SemiBold, color = Color.DarkGray, fontSize = 13.sp)
                 past.forEach { sched -> MedicationScheduleCard(sched, onRemove, onUpdate) }
             }
         }
@@ -1126,14 +1126,14 @@ fun MedicationScheduleCard(sched: MedicationSchedule, onRemove: (String) -> Unit
             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(sched.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                    if (sched.dose.isNotBlank()) Text("Dose: ${sched.dose}", fontSize = 13.sp, color = Color.Gray)
-                    if (sched.timing.isNotBlank()) Text("When: ${sched.timing}", fontSize = 13.sp, color = Color.Gray)
-                    if (sched.purpose.isNotBlank()) Text("Purpose: ${sched.purpose}", fontSize = 13.sp, color = Color.Gray)
+                    if (sched.dose.isNotBlank()) Text("Dose: ${sched.dose}", fontSize = 13.sp, color = Color.DarkGray)
+                    if (sched.timing.isNotBlank()) Text("When: ${sched.timing}", fontSize = 13.sp, color = Color.DarkGray)
+                    if (sched.purpose.isNotBlank()) Text("Purpose: ${sched.purpose}", fontSize = 13.sp, color = Color.DarkGray)
                     Text(
                         text = if (sched.endDate == null) "From ${sched.startDate} onwards"
                                else "${sched.startDate} – ${sched.endDate}",
                         fontSize = 11.sp,
-                        color = Color.Gray,
+                        color = Color.DarkGray,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -1220,7 +1220,7 @@ fun NotesSummaryScreen(
                         showRead -> "No notes recorded yet."
                         else -> "All notes marked as read."
                     },
-                    color = Color.Gray
+                    color = Color.DarkGray
                 )
             }
         } else {
@@ -1242,7 +1242,7 @@ fun NotesSummaryScreen(
                                     text = date,
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (status.isRead) Color.Gray else Color.Black
+                                    color = if (status.isRead) Color.DarkGray else Color.Black
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
@@ -1269,7 +1269,7 @@ fun NotesSummaryScreen(
                                 Text(
                                     text = status.note,
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = if (status.isRead) Color.Gray else Color.Black,
+                                    color = if (status.isRead) Color.DarkGray else Color.Black,
                                     modifier = Modifier.padding(top = 8.dp)
                                 )
                             }
@@ -1278,7 +1278,7 @@ fun NotesSummaryScreen(
                                 Text(
                                     text = "• Exercise: ${status.exercise}",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (status.isRead) Color.Gray else Color.DarkGray,
+                                    color = if (status.isRead) Color.DarkGray else Color.Black,
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
@@ -1289,7 +1289,7 @@ fun NotesSummaryScreen(
                                         text = "Symptoms",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = if (status.isRead) Color.Gray else Color.Black
+                                        color = if (status.isRead) Color.DarkGray else Color.Black
                                     )
                                     listOf(
                                         Triple("Pain", symptoms.pain, symptoms.painSeverity),
@@ -1306,7 +1306,7 @@ fun NotesSummaryScreen(
                                             Text(
                                                 text = "• $label$severityText$valueText",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = if (status.isRead) Color.Gray else Color.DarkGray,
+                                                color = if (status.isRead) Color.DarkGray else Color.Black,
                                                 modifier = Modifier.padding(top = 2.dp)
                                             )
                                         }
@@ -1570,7 +1570,7 @@ fun DayAppointmentScreen(
             Text("Appointments", fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
             if (dayAppts.isEmpty()) {
-                Text("No appointments for this day.", color = Color.Gray)
+                Text("No appointments for this day.", color = Color.DarkGray)
             } else {
                 dayAppts.forEach { appt ->
                     val isBeingEdited = editingAppt?.id == appt.id
@@ -1602,15 +1602,15 @@ fun DayAppointmentScreen(
                                     Text(appt.title, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                                 }
                                 if (appt.location.isNotBlank()) {
-                                    Text("📍 ${appt.location}", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(top = 2.dp))
+                                    Text("📍 ${appt.location}", fontSize = 13.sp, color = Color.DarkGray, modifier = Modifier.padding(top = 2.dp))
                                 }
                                 val linkedContact = contacts.firstOrNull { it.id == appt.contactId }
                                 if (linkedContact != null) {
                                     val label = if (linkedContact.role.isNotBlank()) "${linkedContact.name} (${linkedContact.role})" else linkedContact.name
-                                    Text("👤 $label", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(top = 2.dp))
+                                    Text("👤 $label", fontSize = 13.sp, color = Color.DarkGray, modifier = Modifier.padding(top = 2.dp))
                                 }
                                 if (appt.notes.isNotBlank()) {
-                                    Text(appt.notes, fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
+                                    Text(appt.notes, fontSize = 13.sp, color = Color.DarkGray, modifier = Modifier.padding(top = 4.dp))
                                 }
                             }
                             Text(
@@ -1785,7 +1785,7 @@ fun AppointmentForm(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(contact.name, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                                     if (contact.role.isNotBlank())
-                                        Text(contact.role, fontSize = 12.sp, color = Color.Gray)
+                                        Text(contact.role, fontSize = 12.sp, color = Color.DarkGray)
                                 }
                                 if (contact.id == selectedContactId) {
                                     Text("✓", color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
@@ -1867,7 +1867,7 @@ fun SymptomsScreen(daySymptoms: Map<String, DaySymptoms>) {
         Text("Symptoms", fontSize = 32.sp, fontWeight = FontWeight.Bold)
 
         if (entries.isEmpty()) {
-            Text("No symptoms recorded yet.", color = Color.Gray)
+            Text("No symptoms recorded yet.", color = Color.DarkGray)
         } else {
             entries.forEach { (date, s) ->
                 Card(
@@ -2003,7 +2003,7 @@ fun SymptomTrendsScreen(daySymptoms: Map<String, DaySymptoms>) {
         if (points.isEmpty()) {
             Text(
                 text = "No $selectedSymptom ratings recorded in this range.",
-                color = Color.Gray,
+                color = Color.DarkGray,
                 modifier = Modifier.padding(top = 24.dp)
             )
         } else {
@@ -2083,8 +2083,8 @@ fun SymptomLineChart(
             modifier = Modifier.fillMaxWidth().padding(start = 64.dp, top = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(displayFormat.format(Date(startMillis)), fontSize = 10.sp, color = Color.Gray)
-            Text(displayFormat.format(Date(endMillis)), fontSize = 10.sp, color = Color.Gray)
+            Text(displayFormat.format(Date(startMillis)), fontSize = 10.sp, color = Color.DarkGray)
+            Text(displayFormat.format(Date(endMillis)), fontSize = 10.sp, color = Color.DarkGray)
         }
     }
 }
@@ -2148,7 +2148,7 @@ fun ContactsScreen(
             }
 
             if (sorted.isEmpty() && !showAddForm) {
-                Text("No contacts yet. Tap + Add to create one.", color = Color.Gray)
+                Text("No contacts yet. Tap + Add to create one.", color = Color.DarkGray)
             }
 
             sorted.forEach { contact ->
@@ -2173,16 +2173,16 @@ fun ContactsScreen(
                                 Text(contact.role, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
                             }
                             if (contact.phone.isNotBlank()) {
-                                Text("📞 ${contact.phone}", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(top = 2.dp))
+                                Text("📞 ${contact.phone}", fontSize = 13.sp, color = Color.DarkGray, modifier = Modifier.padding(top = 2.dp))
                             }
                             if (contact.email.isNotBlank()) {
-                                Text("✉ ${contact.email}", fontSize = 13.sp, color = Color.Gray)
+                                Text("✉ ${contact.email}", fontSize = 13.sp, color = Color.DarkGray)
                             }
                             if (contact.address.isNotBlank()) {
-                                Text("📍 ${contact.address}", fontSize = 13.sp, color = Color.Gray)
+                                Text("📍 ${contact.address}", fontSize = 13.sp, color = Color.DarkGray)
                             }
                             if (contact.notes.isNotBlank()) {
-                                Text(contact.notes, fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
+                                Text(contact.notes, fontSize = 13.sp, color = Color.DarkGray, modifier = Modifier.padding(top = 4.dp))
                             }
                         }
                         Text(
@@ -2419,7 +2419,7 @@ fun SeverityRating(value: Int, onChange: (Int) -> Unit, modifier: Modifier = Mod
                     Text(
                         text = severityLabels[level] ?: "",
                         fontSize = 8.sp,
-                        color = Color.Gray,
+                        color = Color.DarkGray,
                         modifier = Modifier.width(32.dp),
                         textAlign = TextAlign.Center
                     )

@@ -14,6 +14,9 @@ PDNotesAndroid/local.properties
 *.aab
 *.ap_
 *.dex
+*.keystore
+*.jks
+keystore.properties
 
 # IntelliJ/Android Studio
 .idea/
