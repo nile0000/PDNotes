@@ -127,6 +127,18 @@ fun schedulesForDate(schedules: List<MedicationSchedule>, dateKey: String): List
 fun appointmentsForDate(appointments: List<Appointment>, dateKey: String): List<Appointment> =
     appointments.filter { it.date == dateKey }.sortedBy { it.time }
 
+// Formats a "HH:mm" (24-hour) time string as 12-hour am/pm, e.g. "14:05" -> "2:05 PM"
+fun formatTimeAmPm(hhmm: String): String {
+    if (hhmm.isBlank()) return ""
+    return try {
+        val parts = hhmm.split(":")
+        val h = parts[0].toInt(); val m = parts[1].toInt()
+        val ampm = if (h < 12) "AM" else "PM"
+        val h12 = when { h == 0 -> 12; h > 12 -> h - 12; else -> h }
+        "%d:%02d %s".format(h12, m, ampm)
+    } catch (_: Exception) { hhmm }
+}
+
 // MARK: - Activity
 
 class MainActivity : ComponentActivity() {
@@ -644,7 +656,7 @@ fun TrackerScreen(
                                     Column(modifier = Modifier.padding(top = 4.dp)) {
                                         dayAppts.forEach { appt ->
                                             Text(
-                                                text = "• ${if (appt.time.isNotBlank()) "${appt.time} " else ""}${appt.title}",
+                                                text = "• ${if (appt.time.isNotBlank()) "${formatTimeAmPm(appt.time)} " else ""}${appt.title}",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = Color.DarkGray,
                                                 modifier = Modifier.clickable { onShowAppointmentsForDate(dayKey) }
@@ -1465,7 +1477,7 @@ fun CalendarView(
                                         } else {
                                             dayAppts.take(2).forEach { appt ->
                                                 Text(
-                                                    text = if (appt.time.isNotEmpty()) "${appt.time} ${appt.title}" else appt.title,
+                                                    text = if (appt.time.isNotEmpty()) "${formatTimeAmPm(appt.time)} ${appt.title}" else appt.title,
                                                     fontSize = 7.sp,
                                                     color = MaterialTheme.colorScheme.primary,
                                                     fontWeight = FontWeight.Medium,
@@ -1592,7 +1604,7 @@ fun DayAppointmentScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (appt.time.isNotBlank()) {
                                         Text(
-                                            text = appt.time,
+                                            text = formatTimeAmPm(appt.time),
                                             fontSize = 12.sp,
                                             color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.SemiBold,
@@ -1645,17 +1657,6 @@ fun AppointmentForm(
     var showContactPicker by remember { mutableStateOf(false) }
     var showAddContact by remember { mutableStateOf(false) }
 
-    fun timeDisplay(hhmm: String): String {
-        if (hhmm.isBlank()) return ""
-        return try {
-            val parts = hhmm.split(":")
-            val h = parts[0].toInt(); val m = parts[1].toInt()
-            val ampm = if (h < 12) "AM" else "PM"
-            val h12 = when { h == 0 -> 12; h > 12 -> h - 12; else -> h }
-            "%d:%02d %s".format(h12, m, ampm)
-        } catch (_: Exception) { hhmm }
-    }
-
     fun showTimePicker() {
         val parts = time.split(":")
         val initH = parts.getOrNull(0)?.toIntOrNull() ?: 9
@@ -1688,7 +1689,7 @@ fun AppointmentForm(
                 singleLine = true
             )
             OutlinedTextField(
-                value = timeDisplay(time),
+                value = formatTimeAmPm(time),
                 onValueChange = {},
                 label = { Text("Time (optional)") },
                 modifier = Modifier
