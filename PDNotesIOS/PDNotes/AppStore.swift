@@ -97,7 +97,7 @@ final class AppStore: ObservableObject {
 
     var activeSchedules: [MedicationSchedule] {
         let today = DateKey.today()
-        return medicationSchedules.filter { $0.endDate == nil || $0.endDate! >= today }
+        return medicationSchedules.filter { $0.startDate <= today && ($0.endDate == nil || $0.endDate! >= today) }
     }
 
     var pastSchedules: [MedicationSchedule] {

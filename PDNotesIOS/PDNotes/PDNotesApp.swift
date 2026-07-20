@@ -23,6 +23,7 @@ enum TopScreen: String, CaseIterable {
     case calendar = "Calendar"
     case meds = "Meds"
     case notes = "Notes"
+    case symptoms = "Symptoms"
     case trends = "Trends"
     case contacts = "Contacts"
 
@@ -32,6 +33,7 @@ enum TopScreen: String, CaseIterable {
         case .calendar: return "calendar"
         case .meds: return "pills"
         case .notes: return "note.text"
+        case .symptoms: return "waveform.path.ecg"
         case .trends: return "chart.line.uptrend.xyaxis"
         case .contacts: return "person.crop.circle"
         }
@@ -64,6 +66,12 @@ struct RootView: View {
             }
             .tabItem { Label(TopScreen.notes.rawValue, systemImage: TopScreen.notes.systemImage) }
             .tag(TopScreen.notes)
+
+            NavigationStack {
+                SymptomsScreen()
+            }
+            .tabItem { Label(TopScreen.symptoms.rawValue, systemImage: TopScreen.symptoms.systemImage) }
+            .tag(TopScreen.symptoms)
 
             NavigationStack {
                 SymptomTrendsScreen()

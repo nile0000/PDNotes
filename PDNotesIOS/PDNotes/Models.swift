@@ -7,7 +7,7 @@ enum DayRating: String, Codable, CaseIterable {
 
     var emoji: String {
         switch self {
-        case .good: return "🙂"
+        case .good: return "😊"
         case .normal: return "😐"
         case .bad: return "🙁"
         }
