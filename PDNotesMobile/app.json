@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "PDNotesMobile",
+    "slug": "PDNotesMobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSContactsUsageDescription": "PD Notes can import a contact's name, phone, email, and address so you don't have to type them in by hand."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_CONTACTS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "PD Notes can import a contact's name, phone, email, and address so you don't have to type them in by hand."
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}

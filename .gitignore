@@ -32,3 +32,19 @@ xcuserdata/
 *.xcworkspace/xcuserdata/
 DerivedData/
 PDNotesIOS/build/
+
+# Node / TypeScript
+node_modules/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+.env
+.env.local
+.env.*.local
+
+# Expo / React Native
+PDNotesMobile/.expo/
+PDNotesMobile/.expo-shared/
+PDNotesMobile/web-build/
+*.orig.*
+.metro-health-check*
