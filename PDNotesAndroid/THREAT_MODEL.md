@@ -47,7 +47,8 @@ sequenceDiagram
     KS-->>UI: master key
     UI->>SP: getString("medication_schedules"/"day_statuses"/"day_symptoms"/"appointments"/"contacts")
     SP-->>UI: decrypted JSON blob (or null)
-    Note over UI: Each blob parsed independently in its own try/catch;<br/>a parse failure is caught, logged (MainActivity.kt:199,222,268,314,354),<br/>and that category silently loads as empty — no user-facing warning.
+    Note over UI: Each blob parsed independently in its own try/catch.
+    Note over UI: A parse failure is caught and logged (MainActivity.kt:199,222,268,314,354) — that category silently loads as empty, no user-facing warning.
     UI-->>U: renders symptoms, meds, appointments, contacts
 
     U->>UI: Edit any field (note, rating, symptom, med, appointment, contact)
